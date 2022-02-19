@@ -138,7 +138,7 @@ for d in devs:
     #
     sernums.append(ser[0])
     
-alpha=0.1
+alpha=0.2
 beta=1.0-alpha
 avgangs=[-90000.0]*len(devs)
 wait=10
@@ -178,7 +178,7 @@ UP=0b00001110
 #  motion system.  Will need to be adjusted for local
 #  conditions.
 #
-INITIAL_THRESH = 2.5
+INITIAL_THRESH = 2.0
 
 #
 # Final threshold for possibly doing a "fix up"
@@ -215,7 +215,7 @@ while done == False:
             #
             # We move at about 0.5deg/sec
             #
-            movetimer = abs(ang-position)*2.0
+            movetimer = abs(ang-position)*1.5
             movetimer *= 1.2
         
         avgangs[dind] = (ang*alpha) + (avgangs[dind]*beta)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 #
 # This simple program reads one or more elevation sensors, made by
@@ -134,5 +134,5 @@ while done==False:
         avgangs[dind] = (ang*alpha) + (avgangs[dind]*beta)
         lastang = avgangs[0]
         
-        print "Serial: %d angle %f" % (sernums[dind], avgangs[dind])
+        print ("Serial: %d angle %f" % (sernums[dind], avgangs[dind]))
         time.sleep(0.2)
