@@ -28,7 +28,7 @@ dlist = hid.enumerate(LVL_VID, LVL_PID)
 
 
 if len(dlist) <= 0:
-	raise OSError("Unable to locate any elevation sensors")
+    raise OSError("Unable to locate any elevation sensors")
 
 devs = []
 for dv in dlist:
@@ -43,10 +43,10 @@ buf=bytearray(64)
 #
 sernums = []
 for d in devs:
-	
-	#
-	# Form a "tell me your serial number" command
-	#
+    
+    #
+    # Form a "tell me your serial number" command
+    #
     buf[0] = 0x00
     buf[1] = 0x00
     buf[2] = 0x01
@@ -69,13 +69,14 @@ for d in devs:
     # Unpack the binary
     #
     ser = struct.unpack(">i", b)
+    print ("Found serial: %d" % ser)
     
     #
     # Put it in sernum array
     #
     sernums.append(ser[0])
     
-alpha=0.1
+alpha=0.25
 beta=1.0-alpha
 avgangs=[-90000.0]*len(devs)
 wait=10
@@ -83,15 +84,16 @@ count = 0
 done=False
 current_rate=None
 while done==False:
-	
-	#
-	# For each device in the list
-	#
+    
+    #
+    # For each device in the list
+    #
+    ovavg = 0.0
     for dind in range(0,len(devs)):
-		
-		#
-		# Make up a "give met the angle" command
-		#
+        
+        #
+        # Make up a "give met the angle" command
+        #
         buf[0] = 0x00
         buf[1] = 0x00
         buf[2] = 0x05
@@ -133,6 +135,7 @@ while done==False:
         
         avgangs[dind] = (ang*alpha) + (avgangs[dind]*beta)
         lastang = avgangs[0]
-        
-        print ("Serial: %d angle %f" % (sernums[dind], avgangs[dind]))
-        time.sleep(0.2)
+        ovavg += avgangs[dind]
+        #print ("Serial: %d angle %f" % (sernums[dind], avgangs[dind]))
+        time.sleep(0.1)
+    sys.stdout.write("Average angle: %9.2f\r" % (ovavg/2.0))
