@@ -15,7 +15,11 @@ import struct
 import time
 import math
 import sys
+import argparse
 
+#
+# VID/PID for Level Developments Sensor
+#
 LVL_VID=0x0461
 LVL_PID=0x0021
 
@@ -75,6 +79,12 @@ for d in devs:
     # Put it in sernum array
     #
     sernums.append(ser[0])
+
+parser = argparse.ArgumentParser(description="A tool for reading elevation sensors")
+parser.add_argument("--logfile", type=str, default=None, help="Log file name")
+parser.add_argument("--interval", type=int, default=30, help="Logging Interval")
+
+args = parser.parse_args()
     
 alpha=0.25
 beta=1.0-alpha
@@ -83,6 +93,7 @@ wait=10
 count = 0
 done=False
 current_rate=None
+lasttime=time.time()
 while done==False:
     
     #
@@ -92,7 +103,7 @@ while done==False:
     for dind in range(0,len(devs)):
         
         #
-        # Make up a "give met the angle" command
+        # Make up a "give me the angle" command
         #
         buf[0] = 0x00
         buf[1] = 0x00
@@ -138,4 +149,13 @@ while done==False:
         ovavg += avgangs[dind]
         #print ("Serial: %d angle %f" % (sernums[dind], avgangs[dind]))
         time.sleep(0.1)
-    sys.stdout.write("Average angle: %9.2f\r" % (ovavg/2.0))
+    sys.stdout.write("Average angle: %9.2f\r" % (ovavg/float(len(devs))))
+    if (args.logfile != None and ((time.time() - lasttime) >= args.interval)):
+        fp = open(args.logfile, "a")
+        ltp = time.localtime()
+        fp.write("%04d/%02d/%02d %02d:%02d:%02d %9.2f\n" % (ltp.tm_year,
+            ltp.tm_mon, ltp.tm_mday, ltp.tm_hour, ltp.tm_min, ltp.tm_sec,
+            ovavg/float(len(devs))))
+        fp.close()
+        lasttime = time.time()
+        
