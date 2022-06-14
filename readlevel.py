@@ -161,7 +161,7 @@ while done==False:
         sys.stdout.write("Average angle: %-9.2f\r" % davg)
     if (args.displayfile != None):
         fp = open(args.displayfile, "w")
-        fp.write("%6.2f\n" % davg)
+        fp.write("%7.2f\n" % davg)
         fp.close()
         
     if (args.logfile != None and ((time.time() - lasttime) >= args.interval)):
