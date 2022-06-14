@@ -14,7 +14,7 @@ class Window(QWidget):
         super().__init__()
 
         # setting geometry of main window
-        self.setGeometry(100, 100, 800, 400)
+        self.setGeometry(100, 100, 550, 300)
         
         self.axis = axis
         self.infile = infile
@@ -23,7 +23,7 @@ class Window(QWidget):
         layout = QVBoxLayout()
 
         # creating font object
-        font = QFont('Monospace', 90, QFont.Bold)
+        font = QFont('Monospace', 80, QFont.Bold)
 
         # creating a label object
         self.label = QLabel()
