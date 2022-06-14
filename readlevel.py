@@ -83,10 +83,14 @@ for d in devs:
 parser = argparse.ArgumentParser(description="A tool for reading elevation sensors")
 parser.add_argument("--logfile", type=str, default=None, help="Log file name")
 parser.add_argument("--interval", type=int, default=30, help="Logging Interval")
+parser.add_argument("--displayfile", type=str, default=None, help="File for GUI display")
+parser.add_argument("--offset", type=float, default=0.0, help="Offset adjustment")
+parser.add_argument("--multiplier", type=float, default=1.0, help="Multiplier")
+parser.add_argument("--tout", action="store_true", help="Enable terminal output")
 
 args = parser.parse_args()
     
-alpha=0.25
+alpha=0.3
 beta=1.0-alpha
 avgangs=[-90000.0]*len(devs)
 wait=10
@@ -148,8 +152,18 @@ while done==False:
         lastang = avgangs[0]
         ovavg += avgangs[dind]
         #print ("Serial: %d angle %f" % (sernums[dind], avgangs[dind]))
-        time.sleep(0.1)
-    sys.stdout.write("Average angle: %9.2f\r" % (ovavg/float(len(devs))))
+        time.sleep(0.05)
+    
+    davg = ovavg/float(len(devs))
+    davg *= args.multiplier
+    davg += args.offset
+    if (args.tout == True):
+        sys.stdout.write("Average angle: %-9.2f\r" % davg)
+    if (args.displayfile != None):
+        fp = open(args.displayfile, "w")
+        fp.write("%6.2f\n" % davg)
+        fp.close()
+        
     if (args.logfile != None and ((time.time() - lasttime) >= args.interval)):
         fp = open(args.logfile, "a")
         ltp = time.localtime()

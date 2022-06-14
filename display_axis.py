@@ -47,7 +47,7 @@ class Window(QWidget):
         timer.timeout.connect(self.showData)
 
         # update the timer every second
-        timer.start(300)
+        timer.start(200)
 
     # method called by timer
     def showData(self):
@@ -56,12 +56,10 @@ class Window(QWidget):
         line = fp.readline()
         fp.close()
         
-        if (len(line) > 5):
+        if (len(line) >= 5):
             line = line.strip("\n")
             # showing it to the label
             self.label.setText(self.axis+": "+line)
-        else:
-            self.label.setText("No Data")
 
 
 parser = argparse.ArgumentParser(description="Display axis position")
