@@ -41,13 +41,15 @@ class Scope(object):
 
 def emitter(infile):
     fp = open(infile, "r")
+    lastvalid = 0.0
     while True:
         line = fp.readline()
         if (len(line) > 5):
             v = float(line.replace("\n",""))
+            lastvalid = v
             yield v
         else:
-            yield 0.0
+            yield lastvalid
         fp.seek(0)
         
 parser = argparse.ArgumentParser(description="Plott elevation data")
