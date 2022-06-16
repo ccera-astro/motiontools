@@ -23,7 +23,7 @@ class Window(QWidget):
         layout = QVBoxLayout()
 
         # creating font object
-        font = QFont('Monospace', 80, QFont.Bold)
+        font = QFont('Monospace', 50, QFont.Bold)
 
         # creating a label object
         self.label = QLabel()
