@@ -14,7 +14,7 @@ class Window(QWidget):
         super().__init__()
 
         # setting geometry of main window
-        self.setGeometry(100, 100, 550, 300)
+        self.setGeometry(100, 100, 550, 200)
         
         self.axis = axis
         self.infile = infile
