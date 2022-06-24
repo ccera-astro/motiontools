@@ -168,8 +168,7 @@ while done==False:
         fp = open(args.logfile, "a")
         ltp = time.localtime()
         fp.write("%04d/%02d/%02d %02d:%02d:%02d %9.2f\n" % (ltp.tm_year,
-            ltp.tm_mon, ltp.tm_mday, ltp.tm_hour, ltp.tm_min, ltp.tm_sec,
-            ovavg/float(len(devs))))
+            ltp.tm_mon, ltp.tm_mday, ltp.tm_hour, ltp.tm_min, ltp.tm_sec, davg))
         fp.close()
         lasttime = time.time()
         
