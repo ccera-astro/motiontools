@@ -5,10 +5,6 @@ import sys
 import ephem
 import datetime
 import time
-import pycurl
-from io import BytesIO
-
-
 
 #
 # Establish some constants
@@ -30,7 +26,12 @@ DEG_MINUTE = 0.25
 SLEW_RATE_MAX = 20.0
 RELAY_ADDR = '192.168.1.4'
 
+import pycurl
+from io import BytesIO
 
+#
+# Talk to the 16-channel ethernet-based relay control board
+#
 def send_relay_control(which, state):
     vfile = which * 2
     vfile += state
@@ -41,11 +42,17 @@ def send_relay_control(which, state):
     c.perform()
     c.close()
 
-body = buffer.getvalue()
-# Body is a byte string.
-# We have to know the encoding in order to print it to a text file
-# such as standard output.
-print(body.decode('iso-8859-1'))
+def enable_el_brake():
+	send_relay_control(0, 0)
+	
+def disable_el_brake():
+	send_relay_control(0, 1)
+
+def enable_az_brake():
+	send_relay_control(1, 0)
+
+def disable_az_brake():
+	send_relay_control(1, 1)
 
 def to_ephem_coord(decimal):
     longstr = "%02d" % int(decimal)
