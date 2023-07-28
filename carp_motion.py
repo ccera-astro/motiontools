@@ -16,14 +16,14 @@ ELEVATION = 70.00
 #
 # Pre-reduction ahead of the main gearboxes
 #
-ELEV_PREFIX = 5
-AZ_PREFIX = 5
+ELEV_PREFIX = 5.0
+AZ_PREFIX = 7.5
 ELEV_RATIO = ELEV_PREFIX * (500.47 * 16)
 AZIM_RATIO = AZ_PREFIX * (500.47 * 10)
 
 DEG_MINUTE = 0.25
 
-SLEW_RATE_MAX = 20.0
+SLEW_RATE_MAX = 19.0
 RELAY_ADDR = '192.168.1.4'
 
 import pycurl
@@ -31,28 +31,82 @@ from io import BytesIO
 
 #
 # Talk to the 16-channel ethernet-based relay control board
+# It uses a very-simple "curl" style interface to the outside world
+#  with URLs to control the relays.
+#
+# URLs of the form:
+#   http://ipaddress/30000/xx
+#
+# Where XX is even for "OFF" and odd for "ON".  e.g.
+#    /30000/00   - relay 0 OFF
+#    /30000/01   - relay 0 ON
+#    /30000/02   - relay 1 OFF
+#    /30000/03   - relay 1 ON
+#    .....
+#     etc
+#
+#
+# which - which relay  (0 .. 15)
+# state - 0 for OFF, 1 for ON
 #
 def send_relay_control(which, state):
     vfile = which * 2
     vfile += state
-    buffer = BytesIO()
+    bewfer = BytesIO()
     c = pycurl.Curl()
     c.setopt(c.URL, 'http://%s/30000/%02d' % (RELAY_ADDR, vfile))
-    c.setopt(c.WRITEDATA, buffer)
+    c.setopt(c.WRITEDATA, bewfer)
     c.perform()
     c.close()
 
+#
+# Wrapper functions to control the brakes, which are relays 0 and 1
+#
 def enable_el_brake():
-	send_relay_control(0, 0)
-	
+    send_relay_control(0, 0)
+    
 def disable_el_brake():
-	send_relay_control(0, 1)
+    send_relay_control(0, 1)
 
 def enable_az_brake():
-	send_relay_control(1, 0)
+    send_relay_control(1, 0)
 
 def disable_az_brake():
-	send_relay_control(1, 1)
+    send_relay_control(1, 1)
+
+#
+# Stubs for motor speed control
+#
+def disable_az_motor():
+    return True
+
+def disable_el_motor():
+    return True
+    
+def enable_az_motor():
+    return True
+
+def enable_el_motor():
+    return True
+
+def set_az_speed(spd):
+    if (abs(spd) < 0.05):
+        disable_az_motor()
+    return True
+
+def set_el_speed(spd):
+    if (abs(spd) < 0.05):
+        disable_el_motor()
+    return True
+
+#
+# Stubs for position sensors
+#
+def get_el_sensor():
+    return 0.0
+
+def get_az_sensor():
+    return 0.0
 
 def to_ephem_coord(decimal):
     longstr = "%02d" % int(decimal)
