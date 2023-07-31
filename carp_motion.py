@@ -18,12 +18,26 @@ ELEVATION = 70.00
 #
 ELEV_PREFIX = 5.0
 AZ_PREFIX = 7.5
+
+#
+# Total ratios from the PREFIX gearing, and the main gearing
+#
 ELEV_RATIO = ELEV_PREFIX * (500.47 * 16)
 AZIM_RATIO = AZ_PREFIX * (500.47 * 10)
 
+#
+# Degrees per minute on the equator for sidereal
+#
 DEG_MINUTE = 0.25
 
-SLEW_RATE_MAX = 19.0
+#
+# A rate that is manageable by both axes
+#
+SLEW_RATE_MAX = 19.5
+
+#
+# Relay interface constants
+#
 RELAY_ADDR = '192.168.1.4'
 
 import pycurl
@@ -62,6 +76,10 @@ def send_relay_control(which, state):
 #
 # Wrapper functions to control the brakes, which are relays 0 and 1
 #
+#
+# In our parlance, "enable" means the brake is SET (not receiving any power)
+#   "disable" means the brake is RELEASED (receiving power to the solenoid)
+#
 def enable_el_brake():
     send_relay_control(0, 0)
     
@@ -99,15 +117,39 @@ def set_el_speed(spd):
         disable_el_motor()
     return True
 
+import minmalmodbus as mb
+
+elSensor = None
+azSensor = None
+SENSORS_PORT = '/dev/ttyUSB0'
+SENSOR_BITS = 2**14
+
+def init_sensor_system():
+    global elSensor
+    global azSensor
+    
+    if (elSensor == None or azSensor == None):
+        elSensor = mb.Instrument(SENSORS_PORT, 1)
+        azSensor = mb.Instrument(SENSORS_PORT, 2)
+        elSensor.serial.baudrate = 9600
+        
 #
 # Stubs for position sensors
 #
 def get_el_sensor():
-    return 0.0
+    init_sensor_system()
+    r = elSensor.read_register(0, 0)
+    return (float(r)/float(SENSOR_BITS))*360.0
 
 def get_az_sensor():
-    return 0.0
+    init_sensor_system()
+    r = azSensor.read_register(0, 0)
+    return (float(r)/float(SENSOR_BITS))*360.0
 
+#
+# Take a decimal-degrees coordinate, and transform to the HH:MM:SS
+#   that ephem uses
+#
 def to_ephem_coord(decimal):
     longstr = "%02d" % int(decimal)
     longstr = longstr + ":"
@@ -119,6 +161,9 @@ def to_ephem_coord(decimal):
     longstr += ":00"
     return longstr
 
+#
+# Take an HH:MM:SS coordinate from ephem, and turn into decimal degrees
+#
 def from_ephem_coord(coord):
     q = coord.split(":")
     degs = float(q[0])
@@ -168,7 +213,7 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
     el_slew = max_slew * ELEV_RATIO
     az_slew = max_slew * AZIM_RATIO
     
-    #
+    #A3 carbon steel
     # Adjust az_slew/el_slew based on difference between target and current
     #
     if (abs(targ_el-cur_el) <= 2.5):
