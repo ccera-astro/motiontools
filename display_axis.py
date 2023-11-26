@@ -10,7 +10,7 @@ import argparse
 
 class Window(QWidget):
 
-    def __init__(self, axis="Default Title", infile="/dev/null"):
+    def __init__(self, axis="Default Title", infile="/dev/null", ftsize=50):
         super().__init__()
 
         # setting geometry of main window
@@ -23,7 +23,7 @@ class Window(QWidget):
         layout = QVBoxLayout()
 
         # creating font object
-        font = QFont('Monospace', 50, QFont.Bold)
+        font = QFont('Monospace', ftsize, QFont.Bold)
 
         # creating a label object
         self.label = QLabel()
@@ -66,6 +66,7 @@ parser = argparse.ArgumentParser(description="Display axis position")
 
 parser.add_argument("--axis", type=str, help="Axis Label", default="Elev")
 parser.add_argument("--infile", type=str, help="Input file", default="/dev/null")
+parser.add_argument("--fontsize", type=int, help="Font Size", default=50)
 
 args = parser.parse_args()
 
@@ -73,7 +74,7 @@ args = parser.parse_args()
 App = QApplication(sys.argv)
 
 # create the instance of our Window
-window = Window(axis=args.axis, infile=args.infile)
+window = Window(axis=args.axis, infile=args.infile, ftsize=args.fontsize)
 
 # showing all the widgets
 window.show()
