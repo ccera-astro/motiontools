@@ -16,6 +16,22 @@ import time
 import math
 import sys
 import argparse
+xmlsupport = True
+try:
+    from xmlrpc.server import SimpleXMLRPCServer
+except:
+    xmlsupport = False
+
+import threading
+
+cur_level = -99.99
+def get_level():
+	global cur_level
+	return cur_level
+
+def set_level(lev):
+	global cur_level
+	cur_level = lev
 
 #
 # VID/PID for Level Developments Sensor
@@ -87,8 +103,19 @@ parser.add_argument("--displayfile", type=str, default=None, help="File for GUI 
 parser.add_argument("--offset", type=float, default=0.0, help="Offset adjustment")
 parser.add_argument("--multiplier", type=float, default=1.0, help="Multiplier")
 parser.add_argument("--tout", action="store_true", help="Enable terminal output")
+if (xmlsupport == True):
+    parser.add_argument("--xmlport", type=int, help="XMLRPC Port", default=None)
+
 
 args = parser.parse_args()
+
+if (xmlsupport == True and args.xmlport != None):
+	xmlserver = SimpleXMLRPCServer(('0.0.0.0', args.xmlport), allow_none=True, logRequests=False)
+	xmlserver.register_function(get_level)
+	server_thread = threading.Thread(target=xmlserver.serve_forever)
+	server_thread.daemon = True
+	server_thread.start()
+
     
 alpha=0.3
 beta=1.0-alpha
@@ -163,6 +190,7 @@ while done==False:
         fp = open(args.displayfile, "w")
         fp.write("%7.2f\n" % davg)
         fp.close()
+    set_level(davg)
         
     if (args.logfile != None and ((time.time() - lasttime) >= args.interval)):
         fp = open(args.logfile, "a")
@@ -171,4 +199,4 @@ while done==False:
             ltp.tm_mon, ltp.tm_mday, ltp.tm_hour, ltp.tm_min, ltp.tm_sec, davg))
         fp.close()
         lasttime = time.time()
-        
+
