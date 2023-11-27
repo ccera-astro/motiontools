@@ -17,6 +17,7 @@ def get_level(xmlstring):
     try:
         if (inited == False):
             rpchandle = xmlrpc.ServerProxy(xmlstring, allow_none=True)
+            inited = True
         r = rpchandle.get_level()
     except:
         r = -99.99
@@ -64,7 +65,7 @@ class Window(QWidget):
         timer.timeout.connect(self.showData)
 
         # update the timer every second
-        timer.start(200)
+        timer.start(500)
 
     # method called by timer
     def showData(self):
