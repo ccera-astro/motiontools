@@ -27,7 +27,7 @@ def get_level(xmlstring):
 
 class Window(QWidget):
 
-    def __init__(self, axis="Default Title", infile="/dev/null", ftsize=50, xmlrpc=None):
+    def __init__(self, axis="Default Title", infile="/dev/null", ftsize=50, xmlrpc=None, pace=500):
         super().__init__()
 
         # setting geometry of main window
@@ -36,6 +36,7 @@ class Window(QWidget):
         self.axis = axis
         self.infile = infile
         self.xmlrpc = xmlrpc
+        self.pace = pace
 
         # creating a vertical layout
         layout = QVBoxLayout()
@@ -65,7 +66,7 @@ class Window(QWidget):
         timer.timeout.connect(self.showData)
 
         # update the timer every second
-        timer.start(500)
+        timer.start(self.pace)
 
     # method called by timer
     def showData(self):
@@ -90,6 +91,8 @@ parser.add_argument("--axis", type=str, help="Axis Label", default="Elev")
 parser.add_argument("--infile", type=str, help="Input file", default="/dev/null")
 parser.add_argument("--fontsize", type=int, help="Font Size", default=50)
 parser.add_argument("--xmlrpc", type=str, help="XMLRPC server", default=None)
+parser.add_argument("--pacing", type=float, help="Update pacing", default=0.5)
+
 
 args = parser.parse_args()
 
@@ -97,7 +100,7 @@ args = parser.parse_args()
 App = QApplication(sys.argv)
 
 # create the instance of our Window
-window = Window(axis=args.axis, infile=args.infile, ftsize=args.fontsize, xmlrpc=args.xmlrpc)
+window = Window(axis=args.axis, infile=args.infile, ftsize=args.fontsize, xmlrpc=args.xmlrpc, pace=int(args.pacing*1000.0))
 
 # showing all the widgets
 window.show()
