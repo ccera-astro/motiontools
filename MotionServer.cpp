@@ -30,6 +30,9 @@ bool IsBusPowerLow(INode &theNode) {
 #define TIME_TILL_TIMEOUT	10000	//The timeout used for homing(ms)
 #define BK_DELAY            5000    // Brake delay
 
+int 
+SetUpXMLRPC(SysManager *);
+
 int main(int argc, char* argv[])
 {
 	//msgUser("Motion Server starting. Press Enter to continue.");
@@ -62,17 +65,16 @@ size_t portCount = 0;
 		if (portCount != 1) {
 			
 			printf("Incorrect number of SC hub ports\n");
-
-			//msgUser("Press any key to continue."); //pause so the user can see the error message; waits for user to press a key
-
 			return -1;  //This terminates the main program
 		}
 		
 		IPort &myPort = myMgr->Ports(0);
+		
         /*
          * Open our single SC hub
          */
 		myMgr->PortsOpen(portCount);				//Open the port
+		
 
         /* Configure the SC hub's Brakes to be in auto control mode
          *(the brake will automatically activate, and deactivate based on the state of node 0)
@@ -126,13 +128,8 @@ size_t portCount = 0;
 			theNode.Setup.DelayToDisableMsecs = BK_DELAY;       // Sets brake delay -- our brakes are slow
 			theNode.Motion.MoveVelStart(0.0);					//This should cause it to hold
 		}
-		sleep(20);
-		for (size_t iNode = 0; iNode < myPort.NodeCount(); iNode++)
-		{
-			myPort.Nodes(iNode).EnableReq(false);
-		}
-		INode &Elevation = myPort.Nodes(0);
-		INode &Azimuth = myPort.Nodes(1);
+		sleep(10);
+		SetUpXMLRPC(myMgr);
 	}
 	catch (mnErr& theErr)
 	{
