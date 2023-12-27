@@ -4,6 +4,13 @@
 #include <iostream>
 #include "pubSysCls.h"	
 #include <unistd.h>
+#include <signal.h>
+
+void alarm_handler (int)
+{
+	printf ("Got the alarm, leaving\n");
+	exit(0);
+}
 
 using namespace sFnd;
 
@@ -23,7 +30,7 @@ bool IsBusPowerLow(INode &theNode) {
 //sequential repeated moves on each axis.
 //*********************************************************************************
 
-#define ACC_LIM_RPM_PER_SEC	5000
+#define ACC_LIM_RPM_PER_SEC	1200
 #define VEL_LIM_RPM			2000
 #define MOVE_DISTANCE_CNTS	10000	
 #define NUM_MOVES			5
@@ -75,14 +82,14 @@ size_t portCount = 0;
          */
 		myMgr->PortsOpen(portCount);				//Open the port
 		
-
-        /* Configure the SC hub's Brakes to be in auto control mode
-         *(the brake will automatically activate, and deactivate based on the state of node 0)
-         */
-		myPort.BrakeControl.BrakeSetting(0,BRAKE_AUTOCONTROL);
-		myPort.BrakeControl.BrakeSetting(1,BRAKE_AUTOCONTROL);
+		printf ("Ensuring brakes are engaged on startup\n");
+		printf ("First brake\n");
+		myPort.BrakeControl.BrakeSetting(0, BRAKE_PREVENT_MOTION);
+		printf ("Second brake\n");
+		myPort.BrakeControl.BrakeSetting(1, BRAKE_PREVENT_MOTION);
+		sleep (BK_DELAY/1000);
+		
         
-
 		//Once the code gets past this point, it can be assumed that the Port has been opened without issue
 		//Now we can get a reference to our port object which we will use to access the node objects
 
@@ -102,8 +109,8 @@ size_t portCount = 0;
 			// any shutdowns or NodeStops are cleared, finally the node is enabled
 			theNode.Status.AlertsClear();					//Clear Alerts on node 
 			theNode.Motion.NodeStopClear();	//Clear Nodestops on Node 
-			theNode.Setup.DelayToDisableMsecs = BK_DELAY;
-			myMgr->Delay(200);			
+			//theNode.Setup.DelayToDisableMsecs = BK_DELAY;
+			myMgr->Delay(200);
 			theNode.EnableReq(true);					//Enable node 
 			//At this point the node is enabled
 			printf("Node \t%zi enabled\n", iNode);
@@ -125,10 +132,12 @@ size_t portCount = 0;
 			theNode.VelUnit(INode::RPM);						//Set the units for Velocity to RPM
 			theNode.Motion.AccLimit = ACC_LIM_RPM_PER_SEC;		//Set Acceleration Limit (RPM/Sec)
 			theNode.Motion.VelLimit = VEL_LIM_RPM;				//Set Velocity Limit (RPM)
-			theNode.Setup.DelayToDisableMsecs = BK_DELAY;       // Sets brake delay -- our brakes are slow
 			theNode.Motion.MoveVelStart(0.0);					//This should cause it to hold
+			printf("Disengaging Brakes on Node %d\n", (int)iNode);
+			myPort.BrakeControl.BrakeSetting((int)iNode,BRAKE_ALLOW_MOTION);		
 		}
-		sleep(10);
+		// Allow brakes time to disengage before taking MOVE orders from anyone
+		sleep(BK_DELAY/1000);
 		SetUpXMLRPC(myMgr);
 	}
 	catch (mnErr& theErr)
@@ -199,7 +208,7 @@ public:
         {
 			INode &myNode = myPort.Nodes(which);
 			myNode.Motion.MoveVelStart(move);
-			double timeout = Manager->TimeStampMsec() + 500;			//define a timeout in case the node is unable to enable
+			double timeout = Manager->TimeStampMsec() + 2000;			//define a timeout in case the node is unable to enable
 			while (!myNode.Motion.VelocityReachedTarget()) {
 				if (Manager->TimeStampMsec() > timeout) {
 					rval = -3;
@@ -214,10 +223,10 @@ public:
     }
 };
 
-class MotorShutdown : public xmlrpc_c::method {
+class MotorEnable : public xmlrpc_c::method {
 	SysManager *Manager;
 public:
-    MotorShutdown(SysManager *myMgr) {
+    MotorEnable(SysManager *myMgr) {
         // signature and help strings are documentation -- the client
         // can query this information with a system.methodSignature and
         // system.methodHelp RPC.
@@ -239,15 +248,65 @@ public:
         int cnt = (int)myPort.NodeCount();
         if (which < cnt)
         {
+	
 			INode &myNode = myPort.Nodes(which);
-			myNode.Motion.MoveVelStart(0);
-			double timeout = Manager->TimeStampMsec() + 500;			//define a timeout in case the node is unable to enable
+			myNode.EnableReq(true);
+			usleep(500000);
+			myNode.Motion.MoveVelStart(0.0);
+			myPort.BrakeControl.BrakeSetting(which, BRAKE_ALLOW_MOTION);
+			double timeout = Manager->TimeStampMsec() + 2000;			//define a timeout in case the node is unable to enable
 			while (!myNode.Motion.VelocityReachedTarget()) {
 				if (Manager->TimeStampMsec() > timeout) {
 					rval = -3;
 				}
 			}
-			usleep(500000);
+			sleep(BK_DELAY/1000);
+		}
+		else
+		{
+			rval = -2;
+		}
+		*retvalP = xmlrpc_c::value_int(rval);
+    }
+};
+
+
+class MotorShutdown : public xmlrpc_c::method {
+	SysManager *Manager;
+public:
+    MotorShutdown(SysManager *myMgr) {
+        // signature and help strings are documentation -- the client
+        // can query this information with a system.methodSignature and
+        // system.methodHelp RPC.
+        this->_signature = "i:i";
+            // method's result and two arguments are integers
+        this->_help = "This method shuts down a motor";
+        this->Manager = myMgr;
+    }
+    void
+    execute(xmlrpc_c::paramList const& paramList,
+            xmlrpc_c::value *   const  retvalP) {
+        
+        int rval = 0;
+        int const which(paramList.getInt(0));
+        https://en.wikipedia.org/wiki/List_of_gold_mines_in_Canada#Ontario
+        paramList.verifyEnd(1);
+        
+        IPort &myPort = Manager->Ports(0);
+        int cnt = (int)myPort.NodeCount();
+        if (which < cnt)
+        {
+	
+			INode &myNode = myPort.Nodes(which);
+			myNode.Motion.MoveVelStart(0.0);
+			double timeout = Manager->TimeStampMsec() + 2000;			//define a timeout in case the node is unable to enable
+			while (!myNode.Motion.VelocityReachedTarget()) {
+				if (Manager->TimeStampMsec() > timeout) {
+					rval = -3;
+				}
+			}
+			myPort.BrakeControl.BrakeSetting(which, BRAKE_PREVENT_MOTION);
+			sleep((BK_DELAY/1000)+3);
 			myNode.EnableReq(false);
 		}
 		else
@@ -277,8 +336,7 @@ public:
         int rval = 0;
         
         Manager->PortsClose();
-        sleep(5);
-        exit(0);
+        alarm(5);
 		*retvalP = xmlrpc_c::value_int(rval);
     }
 };
@@ -290,13 +348,18 @@ SetUpXMLRPC(SysManager *myMgr) {
         xmlrpc_c::registry myRegistry;
 
         xmlrpc_c::methodPtr const MoveMethodP(new MotorControl(myMgr));
-        xmlrpc_c::methodPtr const AbortMethodP(new MotorShutdown(myMgr));
+        xmlrpc_c::methodPtr const ShutdownMethodP(new MotorShutdown(myMgr));
         xmlrpc_c::methodPtr const SysExitMethodP(new SysExit(myMgr));
+        xmlrpc_c::methodPtr const EnableMethodP(new MotorEnable(myMgr));
 
-        myRegistry.addMethod("Move", MoveMethodP);
-        myRegistry.addMethod("Shutdown", AbortMethodP);
+        myRegistry.addMethod("Move", MoveMethodP);https://en.wikipedia.org/wiki/List_of_gold_mines_in_Canada#Ontario
+        myRegistry.addMethod("Shutdown", ShutdownMethodP);
+        myRegistry.addMethod("Enable", EnableMethodP);
         myRegistry.addMethod("SysExit", SysExitMethodP);
         
+        signal(SIGALRM, alarm_handler);
+        
+        printf ("Going into abyss!\n");
         xmlrpc_c::serverAbyss myAbyssServer(
             xmlrpc_c::serverAbyss::constrOpt()
             .registryP(&myRegistry)
