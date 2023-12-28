@@ -15,7 +15,7 @@ parser.add_argument("--addr", type=int, default=1, help="Sensor address (1-127)"
 parser.add_argument("--register", type=str, default=None, help="Which register")
 parser.add_argument("--value", type=int, default=None, help="Value to place in register")
 parser.add_argument("--optype", type=str, default=None, help="Optype: read or write")
-parser.add_argument("--continuous", type=bool, default=False, action="store_true")
+parser.add_argument("--continuous", default=False, action="store_true")
 args = parser.parse_args()
 
 Sensor = mb.Instrument(args.device, args.addr)
@@ -40,7 +40,7 @@ if (args.optype == "read"):
         
 elif (args.optype == "write"):
     if (args.value != None):
-        v = Sensor.write_register(reg, args.value)
+        v = Sensor.write_register(reg, args.value, functioncode=0x06)
     else:
         print ("Failed to specify --value for write operation\n")
 else:
