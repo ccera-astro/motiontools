@@ -8,13 +8,17 @@ import time
 registers = {"address" : 0x0004, "position" : 0x0000,
     "rotation" : 0x0009, "encoder" : 0x000B, "midpoint" : 0x000E}
 
+rlist = []
+for key in registers:
+    rlist.append(key)
+    
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--device", type=str, default="/dev/ttyUSB0", help="Serial Device")
 parser.add_argument("--addr", type=int, default=1, help="Sensor address (1-127)")
-parser.add_argument("--register", type=str, default=None, help="Which register")
+parser.add_argument("--register", type=str, default=None, choices=rlist, help="Which register")
 parser.add_argument("--value", type=int, default=None, help="Value to place in register")
-parser.add_argument("--optype", type=str, default=None, help="Optype: read or write")
+parser.add_argument("--optype", type=str, default=None, choices=["read", "write"], help="Optype")
 parser.add_argument("--continuous", default=False, action="store_true")
 args = parser.parse_args()
 
