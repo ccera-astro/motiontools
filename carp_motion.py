@@ -5,6 +5,9 @@ import sys
 import ephem
 import datetime
 import time
+import xmlrpc.client as xml
+import argparse
+import minimalmodbus as mb
 
 #
 # Establish some constants
@@ -33,7 +36,7 @@ DEG_MINUTE = 0.25
 #
 # A rate that is manageable by both axes
 #
-SLEW_RATE_MAX = 19.5
+SLEW_RATE_MAX = 21.0
 
 #
 # Relay interface constants
@@ -81,16 +84,20 @@ def send_relay_control(which, state):
 #   "disable" means the brake is RELEASED (receiving power to the solenoid)
 #
 def enable_el_brake():
-    send_relay_control(0, 0)
+    #send_relay_control(0, 0)
+    return 0
     
 def disable_el_brake():
-    send_relay_control(0, 1)
+    #send_relay_control(0, 1)
+    return 0
 
 def enable_az_brake():
-    send_relay_control(1, 0)
+    #send_relay_control(1, 0)
+    return 0
 
 def disable_az_brake():
-    send_relay_control(1, 1)
+    #send_relay_control(1, 1)
+    return 0
 
 #
 # Stubs for motor speed control
@@ -108,13 +115,16 @@ def enable_el_motor():
     return True
 
 def set_az_speed(spd):
+    global rpc
     if (abs(spd) < 0.05):
         disable_az_motor()
+    rpc.Move(1,spd)
     return True
 
 def set_el_speed(spd):
     if (abs(spd) < 0.05):
         disable_el_motor()
+    rpc.Move(0,spd)
     return True
 
 import minmalmodbus as mb
@@ -137,12 +147,14 @@ def init_sensor_system():
 # Stubs for position sensors
 #
 def get_el_sensor():
+    global elSensor
     init_sensor_system()
     r = elSensor.read_register(0, 0)
     return (float(r)/float(SENSOR_BITS))*360.0
 
 def get_az_sensor():
     init_sensor_system()
+    global azSensor
     r = azSensor.read_register(0, 0)
     return (float(r)/float(SENSOR_BITS))*360.0
 
@@ -213,20 +225,20 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
     el_slew = max_slew * ELEV_RATIO
     az_slew = max_slew * AZIM_RATIO
     
-    #A3 carbon steel
+    #
     # Adjust az_slew/el_slew based on difference between target and current
     #
     if (abs(targ_el-cur_el) <= 2.5):
         el_slew = el_slew / 2.0
     if (abs(targ_el-cur_el) <= 1.25):
-        el_slew = el_slew / 2.0
+        el_slew = el_slew / 2.5
     if (abs(targ_el-cur_el) <= 0.625):
         el_slew = el_slew / 3.0
 
     if (abs(targ_az-cur_az) <= 2.5):
         el_slew = az_slew / 2.0
     if (abs(targ_az-cur_az) <= 1.25):
-        az_slew = az_slew / 2.0
+        az_slew = az_slew / 2.5
     if (abs(targ_az-cur_az) <= 0.625):
         az_slew = az_slew / 3.0
 
@@ -280,8 +292,8 @@ def moveto(t_ra, t_dec, lat, lon, elev):
     #
     # Pop the brakes off!
     #
-    disable_az_brake()
-    disable_el_brake()
+    #disable_az_brake()
+    #disable_el_brake()
     
     #
     # Init our weirdness counter
@@ -304,8 +316,8 @@ def moveto(t_ra, t_dec, lat, lon, elev):
         if (az_speed == -9999 and el_speed == -9999):
             set_az_speed(0.0)
             set_el_speed(0.0)
-            enable_az_brake()
-            enable_el_brake()
+            #enable_az_brake()
+            #enable_el_brake()
             break
         
         #
@@ -549,3 +561,28 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
     enable_el_brake()
     
     return rv
+
+def main():
+    global rpc
+    rpc = xml.ServerProxy("http://localhost:36036")
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument ("--ra", type=float, default=None, help="RA of object")
+    parser.add_argument ("--dec", type=float, default=None, help="DEC of object")
+    parser.add_argument ("--tracking", type=float, default=0.0, help="How long to track")
+    parser.add_argument ("--lat", type=float, default=45.3497, help="Local latitude")
+    parser.add_argument ("--lon", type=float, default=-76.0559, help="Local longitude")
+    parser.add_argument ("--elev", type=float, default=96.0, help="Local elevation (m)")
+    
+    args = parser.parse_args()
+    moveto(args.ra, args.dec, args.lat, args.long, args.elev)
+    
+    if (args.tracking > 0):
+        track(args.ra, args.dec, args.lat, args.lon, args.elev, args.tracking)
+
+    
+    
+    
+    
+    
+    
