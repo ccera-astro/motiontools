@@ -9,6 +9,7 @@ import xmlrpc.client as xml
 import argparse
 import minimalmodbus as mb
 
+
 #
 # Establish some constants
 #
@@ -122,15 +123,16 @@ def set_az_speed(spd):
     return True
 
 def set_el_speed(spd):
+    global rpc
     if (abs(spd) < 0.05):
         disable_el_motor()
     rpc.Move(0,spd)
     return True
 
-import minmalmodbus as mb
 
 elSensor = None
 azSensor = None
+sensorFailed = False
 SENSORS_PORT = '/dev/ttyUSB0'
 SENSOR_BITS = 2**14
 
@@ -139,9 +141,14 @@ def init_sensor_system():
     global azSensor
     
     if (elSensor == None or azSensor == None):
-        elSensor = mb.Instrument(SENSORS_PORT, 1)
-        azSensor = mb.Instrument(SENSORS_PORT, 2)
-        elSensor.serial.baudrate = 9600
+        try:
+            elSensor = mb.Instrument(SENSORS_PORT, 1)
+            azSensor = mb.Instrument(SENSORS_PORT, 2)
+            elSensor.serial.baudrate = 9600
+        except:
+            elSensor = None
+            azSensor = None
+            sensorFailed = True
         
 #
 # Stubs for position sensors
@@ -149,14 +156,20 @@ def init_sensor_system():
 def get_el_sensor():
     global elSensor
     init_sensor_system()
-    r = elSensor.read_register(0, 0)
-    return (float(r)/float(SENSOR_BITS))*360.0
+    try:
+        r = elSensor.read_register(0, 0)
+        return (float(r)/float(SENSOR_BITS))*360.0
+    except:
+        return -1000.0
 
 def get_az_sensor():
     init_sensor_system()
     global azSensor
-    r = azSensor.read_register(0, 0)
-    return (float(r)/float(SENSOR_BITS))*360.0
+    try:
+        r = azSensor.read_register(0, 0)
+        return (float(r)/float(SENSOR_BITS))*360.0
+    except:
+        return -1000.0
 
 #
 # Take a decimal-degrees coordinate, and transform to the HH:MM:SS
@@ -380,7 +393,7 @@ def moveto(t_ra, t_dec, lat, lon, elev):
         if (az_speed != -9999 and abs(cur_az-get_az_sensor()) < 0.025):
             weird_count += 1
         
-        if (weird_count > 5):
+        if (weird_count >= 5):
             print( "Axis not moving!!")
             set_az_speed(0.0)
             set_el_speed(0.0)
@@ -575,14 +588,12 @@ def main():
     parser.add_argument ("--elev", type=float, default=96.0, help="Local elevation (m)")
     
     args = parser.parse_args()
-    moveto(args.ra, args.dec, args.lat, args.long, args.elev)
+    moveto(args.ra, args.dec, args.lat, args.lon, args.elev)
     
     if (args.tracking > 0):
         track(args.ra, args.dec, args.lat, args.lon, args.elev, args.tracking)
 
-    
-    
-    
-    
-    
+if __name__ == '__main__':
+    main()
+
     

@@ -6,13 +6,42 @@
 #include <unistd.h>
 #include <signal.h>
 
-void alarm_handler (int)
+using namespace sFnd;
+SysManager* myMgr = NULL;
+
+#define BK_DELAY            5000    // Brake delay
+
+void alarm_handler (int q)
 {
 	printf ("Got the alarm, leaving\n");
 	exit(0);
 }
 
-using namespace sFnd;
+void exit_handler(int q)
+{
+		int rval;
+		
+		fprintf (stderr, "Shutting down due to signal\n");
+	    IPort &myPort = myMgr->Ports(0);
+        int cnt = (int)myPort.NodeCount();
+        for (int which = 0; which < (int)myPort.NodeCount(); which++)
+        {
+			INode &myNode = myPort.Nodes(which);
+			myNode.Motion.MoveVelStart(0.0);
+			double timeout = myMgr->TimeStampMsec() + 1000;			//define a timeout in case the node is unable to enable
+			while (!myNode.Motion.VelocityReachedTarget()) {
+				if (myMgr->TimeStampMsec() > timeout) {
+					rval = -3;
+				}
+			}
+			myPort.BrakeControl.BrakeSetting(which, BRAKE_PREVENT_MOTION);
+			sleep((BK_DELAY/1000)+3);
+			myNode.EnableReq(false);
+		}
+	myMgr->PortsClose();
+	sleep(1);
+	exit(0);
+}
 
 // Send message and wait for newline
 void msgUser(const char *msg) {
@@ -30,15 +59,16 @@ bool IsBusPowerLow(INode &theNode) {
 //sequential repeated moves on each axis.
 //*********************************************************************************
 
-#define ACC_LIM_RPM_PER_SEC	1200
+#define ACC_LIM_RPM_PER_SEC	2500
 #define VEL_LIM_RPM			2000
 #define MOVE_DISTANCE_CNTS	10000	
 #define NUM_MOVES			5
 #define TIME_TILL_TIMEOUT	10000	//The timeout used for homing(ms)
-#define BK_DELAY            5000    // Brake delay
+
 
 int 
 SetUpXMLRPC(SysManager *);
+
 
 int main(int argc, char* argv[])
 {
@@ -49,7 +79,7 @@ size_t portCount = 0;
 	
 	//Create the SysManager object. This object will coordinate actions among various ports
 	// and within nodes. In this example we use this object to setup and open our port.
-	SysManager* myMgr = SysManager::Instance();	
+	myMgr = SysManager::Instance();	
 
 	//This will try to open the port. If there is an error/exception during the port opening,
 	//the code will jump to the catch loop where detailed information regarding the error will be displayed;
@@ -358,6 +388,11 @@ SetUpXMLRPC(SysManager *myMgr) {
         myRegistry.addMethod("SysExit", SysExitMethodP);
         
         signal(SIGALRM, alarm_handler);
+        signal(SIGINT, exit_handler);
+        signal(SIGHUP, exit_handler);
+        signal(SIGQUIT, exit_handler);
+        signal(SIGABRT, exit_handler);
+        
         
         printf ("Going into abyss!\n");
         xmlrpc_c::serverAbyss myAbyssServer(
