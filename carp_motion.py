@@ -494,7 +494,7 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
         #
         # Looks like we're done
         #
-        if (time.time() - start_time >= tracktime):
+        if ((time.time() - start_time) >= tracktime):
             set_az_speed(0.0)
             set_el_speed(0.0)
             enable_az_brake()
