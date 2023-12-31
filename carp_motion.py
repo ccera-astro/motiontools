@@ -9,7 +9,6 @@ import xmlrpc.client as xml
 import argparse
 import minimalmodbus as mb
 
-
 #
 # Establish some constants
 #
@@ -144,7 +143,9 @@ def track_rate(declination):
 
 
 #
-# Determine desired slew rate
+# Determine desired slew rate, based on axis position offsets from target
+#
+# Basically, as we get closer, we slow down, to prevent over-shoot
 #
 # targ_el - target elevation in decimal-float format
 # targ_az - target azimuth in decimal-float format
@@ -175,6 +176,8 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
         el_slew = el_slew / 2.0
     if (abs(targ_el-cur_el) <= 0.625):
         el_slew = el_slew / 3.0
+    if (abs(targ_el-cur_el) <= 0.3125):
+        el_slew = el_slew / 2.0
 
     if (abs(targ_az-cur_az) <= 2.5):
         az_slew = az_slew / 2.0
@@ -182,6 +185,8 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
         az_slew = az_slew / 2.0
     if (abs(targ_az-cur_az) <= 0.625):
         az_slew = az_slew / 3.0
+    if (abs(targ_az-cur_az) <= 0.3125):
+        az_slew = az_slew / 2.0
 
     #
     # Adjust sign
@@ -230,6 +235,12 @@ def moveto(t_ra, t_dec, lat, lon, elev):
     el_speed = 0.0
     az_speed = 0.0
     
+    #
+    # We assume that the axis will start in "running" state
+    #
+    el_running = True
+    az_running = True
+    
     
     #
     # Init our weirdness counter
@@ -250,7 +261,7 @@ def moveto(t_ra, t_dec, lat, lon, elev):
         # Looks like down below, we have stopped motion on both
         #  axes--we exit this loop when this happens
         #
-        if (az_speed == -9999 and el_speed == -9999):
+        if (az_running == False and el_running == False):
             set_az_speed(0.0)
             set_el_speed(0.0)
             break
@@ -276,6 +287,17 @@ def moveto(t_ra, t_dec, lat, lon, elev):
             
         cur_el = get_el_sensor()
         cur_az = get_az_sensor()
+        
+        #
+        # This accounts for the fact that the two axes will not be
+        #  finishing at the same time, and indeed, one may be very
+        #  "close" at the start, but if we stop, it will drift further
+        #  away.
+        #
+        if (abs(cur_el - t_el) > 0.05):
+            el_running = True
+        if (abs(cur_az - t_az) > 0.05):
+            az_running = True
             
         #
         # Determine desired slew-rate based on relative distances on
@@ -287,41 +309,43 @@ def moveto(t_ra, t_dec, lat, lon, elev):
         # Update commanded motor speed if desired rate is different from
         #   current rate
         #
-        if (el_speed != -9999 and el_speed != slew_tuple[0]):
+        if (el_running == True and el_speed != slew_tuple[0]):
             el_speed = slew_tuple[0]
             set_el_speed(el_speed)
             
-        if (az_speed != -9999 and az_speed != slew_tuple[1]):
+        if (al_running == True  and az_speed != slew_tuple[1]):
             az_speed = slew_tuple[1]
             set_az_speed(az_speed)
         
         #
-        # We haved reached the object in elevation--zero speed, brakes ON
+        # We haved reached the object in elevation--zero speed
         #
         if (abs(cur_el-t_el) < 0.05):
             set_el_speed(0.0)
-            el_speed = -9999
+            el_speed = 0.0
+            el_running = False
         
         #
-        # We have reached the object in azimuth--zero speed, brakes ON
+        # We have reached the object in azimuth--zero speed
         #
         if (abs(cur_az - t_az) < 0.05):
             set_az_speed(0.0)
-            az_speed = -9999
+            el_speed = 0.0
+            az_running = False
             
         #
         # Wait 1 second between updates
         #
-        time.sleep(1)
+        time.sleep(2)
         
         #
-        # Hmm, despite there being a 1-second pause the relevant axis
+        # Hmm, despite there being a 2-second pause the relevant axis
         #   hasn't moved.  Declare some "weirdness"
         #
-        if (el_speed != -9999 and (abs(cur_el-get_el_sensor()) < 0.025)):
+        if (el_running == True and (abs(cur_el-get_el_sensor()) < 0.025)):
             weird_count += 1
 
-        if (az_speed != -9999 and abs(cur_az-get_az_sensor()) < 0.025):
+        if (el_running == True and abs(cur_az-get_az_sensor()) < 0.025):
             weird_count += 1
         
         if (weird_count >= 5):
@@ -530,9 +554,9 @@ def main():
     #   but I think the coordinate transrorms in pyephem are still valid
     #
     if (args.planet != None):
-		#
-		# Use SkyField to determine RA/DEC of planet
-		#
+        #
+        # Use SkyField to determine RA/DEC of planet
+        #
         # Create a timescale and ask the current time.
         ts = load.timescale()
         t = ts.now()
@@ -545,10 +569,10 @@ def main():
         astrometric = earth.at(t).observe(planet)
         ra, dec, distance = astrometric.radec()
 
-		#
-		# Set our target ra/dec accordingly--overriding anything in
-		#  args.ra and args.dec
-		#
+        #
+        # Set our target ra/dec accordingly--overriding anything in
+        #  args.ra and args.dec
+        #
         tra = float(ra.hours)
         tdec = float(dec.degrees)
         
