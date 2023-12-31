@@ -35,97 +35,25 @@ AZIM_RATIO = AZ_PREFIX * (500.47 * 10)
 DEG_MINUTE = 0.25
 
 #
+# Soft limits for motion
+#
+ELEVATION_LIMITS = (0.5,91.5)
+AZIMUTH_LIMITS = (0.5,359.5)
+
+
+#
 # A rate that is manageable by both axes
 #
 SLEW_RATE_MAX = 21.0
 
-#
-# Relay interface constants
-#
-RELAY_ADDR = '192.168.1.4'
-
-import pycurl
-from io import BytesIO
-
-#
-# Talk to the 16-channel ethernet-based relay control board
-# It uses a very-simple "curl" style interface to the outside world
-#  with URLs to control the relays.
-#
-# URLs of the form:
-#   http://ipaddress/30000/xx
-#
-# Where XX is even for "OFF" and odd for "ON".  e.g.
-#    /30000/00   - relay 0 OFF
-#    /30000/01   - relay 0 ON
-#    /30000/02   - relay 1 OFF
-#    /30000/03   - relay 1 ON
-#    .....
-#     etc
-#
-#
-# which - which relay  (0 .. 15)
-# state - 0 for OFF, 1 for ON
-#
-def send_relay_control(which, state):
-    vfile = which * 2
-    vfile += state
-    bewfer = BytesIO()
-    c = pycurl.Curl()
-    c.setopt(c.URL, 'http://%s/30000/%02d' % (RELAY_ADDR, vfile))
-    c.setopt(c.WRITEDATA, bewfer)
-    c.perform()
-    c.close()
-
-#
-# Wrapper functions to control the brakes, which are relays 0 and 1
-#
-#
-# In our parlance, "enable" means the brake is SET (not receiving any power)
-#   "disable" means the brake is RELEASED (receiving power to the solenoid)
-#
-def enable_el_brake():
-    #send_relay_control(0, 0)
-    return 0
-    
-def disable_el_brake():
-    #send_relay_control(0, 1)
-    return 0
-
-def enable_az_brake():
-    #send_relay_control(1, 0)
-    return 0
-
-def disable_az_brake():
-    #send_relay_control(1, 1)
-    return 0
-
-#
-# Stubs for motor speed control
-#
-def disable_az_motor():
-    return True
-
-def disable_el_motor():
-    return True
-    
-def enable_az_motor():
-    return True
-
-def enable_el_motor():
-    return True
 
 def set_az_speed(spd):
     global rpc
-    if (abs(spd) < 0.05):
-        disable_az_motor()
     rpc.Move(1,spd)
     return True
 
 def set_el_speed(spd):
     global rpc
-    if (abs(spd) < 0.05):
-        disable_el_motor()
     rpc.Move(0,spd)
     return True
 
@@ -244,14 +172,14 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
     if (abs(targ_el-cur_el) <= 2.5):
         el_slew = el_slew / 2.0
     if (abs(targ_el-cur_el) <= 1.25):
-        el_slew = el_slew / 2.5
+        el_slew = el_slew / 2.0
     if (abs(targ_el-cur_el) <= 0.625):
         el_slew = el_slew / 3.0
 
     if (abs(targ_az-cur_az) <= 2.5):
-        el_slew = az_slew / 2.0
+        az_slew = az_slew / 2.0
     if (abs(targ_az-cur_az) <= 1.25):
-        az_slew = az_slew / 2.5
+        az_slew = az_slew / 2.0
     if (abs(targ_az-cur_az) <= 0.625):
         az_slew = az_slew / 3.0
 
@@ -302,11 +230,6 @@ def moveto(t_ra, t_dec, lat, lon, elev):
     el_speed = 0.0
     az_speed = 0.0
     
-    #
-    # Pop the brakes off!
-    #
-    #disable_az_brake()
-    #disable_el_brake()
     
     #
     # Init our weirdness counter
@@ -322,6 +245,7 @@ def moveto(t_ra, t_dec, lat, lon, elev):
     # Forever, until we zero-in on the target
     #
     while True:
+        limits = False
         #
         # Looks like down below, we have stopped motion on both
         #  axes--we exit this loop when this happens
@@ -329,8 +253,6 @@ def moveto(t_ra, t_dec, lat, lon, elev):
         if (az_speed == -9999 and el_speed == -9999):
             set_az_speed(0.0)
             set_el_speed(0.0)
-            #enable_az_brake()
-            #enable_el_brake()
             break
         
         #
@@ -341,6 +263,17 @@ def moveto(t_ra, t_dec, lat, lon, elev):
         t_az = from_ephem_coord("%s" % v.az)
         t_el = from_ephem_coord("%s" % v.alt)
         
+        if (t_el < ELEVATION_LIMITS[0] or t_el > ELEVATION_LIMITS[1]):
+            set_el_speed(0.0)
+            limits = True
+            
+        if (t_az < AZIMUTH_LIMITS[0] or t_az > AZIMUTH_LIMITS[1]):
+            set_az_speed(0.0)
+            limits = True
+        
+        if (limits == True):
+            break
+            
         cur_el = get_el_sensor()
         cur_az = get_az_sensor()
             
@@ -367,7 +300,6 @@ def moveto(t_ra, t_dec, lat, lon, elev):
         #
         if (abs(cur_el-t_el) < 0.05):
             set_el_speed(0.0)
-            enable_el_brake()
             el_speed = -9999
         
         #
@@ -375,7 +307,6 @@ def moveto(t_ra, t_dec, lat, lon, elev):
         #
         if (abs(cur_az - t_az) < 0.05):
             set_az_speed(0.0)
-            enable_az_brake()
             az_speed = -9999
             
         #
@@ -397,8 +328,6 @@ def moveto(t_ra, t_dec, lat, lon, elev):
             print( "Axis not moving!!")
             set_az_speed(0.0)
             set_el_speed(0.0)
-            enable_az_brake()
-            enable_el_brake()
             rv = False
             break
     #
@@ -406,8 +335,10 @@ def moveto(t_ra, t_dec, lat, lon, elev):
     #
     set_az_speed(0.0)
     set_el_speed(0.0)
-    enable_az_brake()
-    enable_el_brake()
+    
+    if (limits == True):
+        print ("At least one axis limit exceeded--not proceeding")
+        rv = False
     
     return rv
 
@@ -475,12 +406,6 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
     last_az = get_az_sensor()
     
     #
-    # Pop the brakes off!
-    #
-    disable_az_brake()
-    disable_el_brake()
-    
-    #
     # Set initial speed
     #
     speeds = track_rate(t_dec)
@@ -497,8 +422,6 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
         if ((time.time() - start_time) >= tracktime):
             set_az_speed(0.0)
             set_el_speed(0.0)
-            enable_az_brake()
-            enable_el_brake()
             break
         
         #
@@ -570,10 +493,11 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
     #
     set_az_speed(0.0)
     set_el_speed(0.0)
-    enable_az_brake()
-    enable_el_brake()
     
     return rv
+
+
+from skyfield.api import load
 
 def main():
     global rpc
@@ -586,14 +510,54 @@ def main():
     parser.add_argument ("--lat", type=float, default=45.3497, help="Local latitude")
     parser.add_argument ("--lon", type=float, default=-76.0559, help="Local longitude")
     parser.add_argument ("--elev", type=float, default=96.0, help="Local elevation (m)")
+    parser.add_argument ("--planet", type=str, default=None, help="Planetary body")
     
     args = parser.parse_args()
-    moveto(args.ra, args.dec, args.lat, args.lon, args.elev)
+    
+    #
+    # Pick up targets
+    #
+    tra = args.ra
+    tdec = args.dec
+    
+    #
+    # They've asked to track a planetary body
+    #
+    # The planetary ephemeris in pyEphem is out of date, so we use
+    #  SkyField for planets
+    #
+    # We could use SkyField for everything, and maybe we will one day,
+    #   but I think the coordinate transrorms in pyephem are still valid
+    #
+    if (args.planet != None):
+		#
+		# Use SkyField to determine RA/DEC of planet
+		#
+        # Create a timescale and ask the current time.
+        ts = load.timescale()
+        t = ts.now()
+
+        # Load the JPL ephemeris DE421 (covers 1900-2050).
+        planets = load('de421.bsp')
+        earth, planet = planets['earth'], planets[args.planet]
+
+        # What's the position of planet, viewed from Earth?
+        astrometric = earth.at(t).observe(planet)
+        ra, dec, distance = astrometric.radec()
+
+		#
+		# Set our target ra/dec accordingly--overriding anything in
+		#  args.ra and args.dec
+		#
+        tra = float(ra.hours)
+        tdec = float(dec.degrees)
+        
+    if (moveto(tra, tdec, args.lat, args.lon, args.elev) != True):
+        print ("Problem encountered--exiting prior to tracking")
+        exit(1)
     
     if (args.tracking > 0):
-        track(args.ra, args.dec, args.lat, args.lon, args.elev, args.tracking)
+        track(tra, tdec, args.lat, args.lon, args.elev, args.tracking)
 
 if __name__ == '__main__':
     main()
-
-    
