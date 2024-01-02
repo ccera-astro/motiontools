@@ -29,6 +29,12 @@ ELEV_RATIO = ELEV_PREFIX * (500.47 * 16)
 AZIM_RATIO = AZ_PREFIX * (500.47 * 10)
 
 #
+# Signs (might need to flip one or both of these on the actual machine)
+#
+ELEV_SIGN = 1.0
+AZ_SIGN = 1.0
+
+#
 # Degrees per minute on the equator for sidereal
 #
 DEG_MINUTE = 0.25
@@ -48,15 +54,20 @@ SLEW_RATE_MAX = 21.0
 
 def set_az_speed(spd):
     global rpc
-    rpc.Move(1,spd)
+    rpc.Move(1,spd*AZ_SIGN)
     return True
 
 def set_el_speed(spd):
     global rpc
-    rpc.Move(0,spd)
+    rpc.Move(0,spd*EL_SIGN)
     return True
 
 
+#
+# The sensor code may move into a separate XMLRPC server at some point,
+#  so that other parts of our overall system at the observatory can
+#  get at it.
+#
 elSensor = None
 azSensor = None
 sensorFailed = False
@@ -78,7 +89,7 @@ def init_sensor_system():
             sensorFailed = True
         
 #
-# Stubs for position sensors
+# Functions for position sensors
 #
 def get_el_sensor():
     global elSensor
@@ -435,6 +446,13 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
     speeds = track_rate(t_dec)
     el_speed = speeds[0]
     az_speed = speeds[1]
+    
+    #
+    # If we're past the meridian, we're heading downwards in elevation
+    #
+    if (last_az > 180.0):
+        el_speed = el_speed * -1.0
+
     set_az_speed(az_speed)
     set_el_speed(el_speed)
 
@@ -461,6 +479,16 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
         #
         cur_el = get_el_sensor()
         cur_az = get_az_sensor()
+        
+        if (cur_el < ELEVATION_LIMITS[0] or cur_el > ELEVATION_LIMITS[1]):
+            print ("Elevation position limit exceeded (%f).  Halting tracking" % cur_el)
+            rv = False
+            break
+        
+        if (cur_az < AZIMUTH_LIMITS[0] or cur_az > AZIMUTH_LIMITS[1]):
+            print ("Azimuth position limit exceeded (%f).  Halting tracking" % cur_az)
+            rv = False
+            break
         
         #
         # Determine actual machine rates
@@ -504,10 +532,10 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
         #
         # Update speeds if reasonable
         #
-        if (abs(el_ratio) < 0.95 or abs(el_ratio) > 1.05):
+        if (abs(el_ratio) < 0.98 or abs(el_ratio) > 1.02):
             set_el_speed(el_speed)
         
-        if (abs(az_ratio) < 0.95 or abs(az_ratio) > 1.05):
+        if (abs(az_ratio) < 0.98 or abs(az_ratio) > 1.02):
             set_az_speed(az_speed)
         
         
