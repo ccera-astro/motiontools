@@ -5,6 +5,28 @@
 #include "pubSysCls.h"	
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
+
+#define MOTOR_LOG_FILE "./motor_performance.dat"
+
+void log_motor_data(int which, double speed, double torque)
+{
+	FILE *fp;
+	time_t now;
+	struct tm *ltp;
+	
+	time(&now);
+	
+	ltp = gmtime(&now);
+	
+	fp = fopen(MOTOR_LOG_FILE, "a");
+	fprintf (fp, "%04d%02d%02d,%02d%02d%02d,%d,%f,%f", ltp->tm_year, ltp->tm_mon+1, ltp->tm_mday,
+		ltp->tm_hour, ltp->tm_min, ltp->tm_sec,
+		which, speed, torque);
+	fclose(fp);
+	
+}
+	
 
 using namespace sFnd;
 SysManager* myMgr = NULL;
@@ -244,6 +266,8 @@ public:
 					rval = -3;
 				}
 			}
+			double myTrq = myNode.Motion.TrqMeasured;
+			log_motor_data(which, move, myTrq);
 		}
 		else
 		{
