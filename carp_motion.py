@@ -453,9 +453,12 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
     if (last_az > 180.0):
         el_speed = el_speed * -1.0
 
+	#
+	# Start the ball rolling...
+	#  at the initial speed, which will get adjusted 10 seconds from now
+	#
     set_az_speed(az_speed)
     set_el_speed(el_speed)
-
     time.sleep (minterval)
     while True:
         #
@@ -532,13 +535,17 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
         #
         # Update speeds if reasonable
         #
-        if (abs(el_ratio) < 0.98 or abs(el_ratio) > 1.02):
+        if (abs(el_ratio) < 0.985 or abs(el_ratio) > 1.025):
             set_el_speed(el_speed)
         
-        if (abs(az_ratio) < 0.98 or abs(az_ratio) > 1.02):
+        if (abs(az_ratio) < 0.985 or abs(az_ratio) > 1.025):
             set_az_speed(az_speed)
         
-        
+        #
+        # We have a measurement interval for determining what the
+        #   current angular rate of the machine is, and what is
+        #   actually required based on the ephemeris calculations.
+        #
         time.sleep(minterval)
     #
     # No matter how we exit from this loop, make sure things are "safe"
