@@ -76,10 +76,10 @@ def device_loop():
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--xmlport", type=int, required=True, help="XML Port")
-parser.add_argument("--serialport", type=int, default=SENSOR_PORT, help="Serial port")
+parser.add_argument("--serialport", type=int, default=SENSORS_PORT, help="Serial port")
 args = parser.parse_args()
 
-SENSOR_PORT = args.serialport
+SENSORS_PORT = args.serialport
 
 #
 # Create and run the XML server in a separate thread
