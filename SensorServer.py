@@ -1,5 +1,8 @@
 #!/usr/bin/python
-
+#
+# This little XMLRPC server interacts with the AZ and EL sensors, and
+#  serves out their information.
+#
 import os
 import sys
 import argparse
@@ -8,11 +11,9 @@ import minimalmodbus as mb
 from xmlrpc.server import SimpleXMLRPCServer
 import threading
 
-#
-# The sensor code may move into a separate XMLRPC server at some point,
-#  so that other parts of our overall system at the observatory can
-#  get at it.
-#
+current_elev = 0.0
+current_az = 0.0
+
 elSensor = None
 azSensor = None
 sensorFailed = False
@@ -55,17 +56,42 @@ def get_az_sensor():
     except:
         return -1000.0
 
+def query_el_sensor():
+    global current_elev
+    return (current_elev)
+
+def query_az_sensor():
+    global current_az
+    return (current_az)
+
+def device_loop():
+	global current_az
+	global current_elev
+	
+	while (True):
+		current_az = get_az_sensor()
+		time.sleep(0.05)
+		current_elev = get_el_sensor()
+		time.sleep(0.3333)
+
 parser = argparse.ArgumentParser()
-parser.add_argument("--xmlport", type=int, default=None, help="XML Port")
+parser.add_argument("--xmlport", type=int, required=True, help="XML Port")
 parser.add_argument("--serialport", type=int, default=SENSOR_PORT, help="Serial port")
 args = parser.parse_args()
 
 SENSOR_PORT = args.serialport
 
-if (args.xmlport != None):
-    xmlserver = SimpleXMLRPCServer(('0.0.0.0', args.xmlport), allow_none=True, logRequests=False)
-    xmlserver.register_function(get_el_sensor)
-    xmlserver.register_function(get_az_sensor)
-    server_thread = threading.Thread(target=xmlserver.serve_forever)
-    server_thread.daemon = True
-    server_thread.start()
+#
+# Create and run the XML server in a separate thread
+#
+xmlserver = SimpleXMLRPCServer(('0.0.0.0', args.xmlport), allow_none=True, logRequests=False)
+xmlserver.register_function(query_el_sensor)
+xmlserver.register_function(query_az_sensor)
+server_thread = threading.Thread(target=xmlserver.serve_forever)
+server_thread.daemon = True
+server_thread.start()
+
+#
+# Loop getting values from the sensor hardware
+#
+device_loop()

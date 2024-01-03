@@ -7,7 +7,6 @@ import datetime
 import time
 import xmlrpc.client as xml
 import argparse
-import minimalmodbus as mb
 
 #
 # Establish some constants
@@ -52,6 +51,9 @@ AZIMUTH_LIMITS = (0.5,359.5)
 SLEW_RATE_MAX = 21.0
 
 
+#
+# Motor server interface
+#
 def set_az_speed(spd):
     global rpc
     rpc.Move(1,spd*AZ_SIGN)
@@ -62,52 +64,16 @@ def set_el_speed(spd):
     rpc.Move(0,spd*EL_SIGN)
     return True
 
-
 #
-# The sensor code may move into a separate XMLRPC server at some point,
-#  so that other parts of our overall system at the observatory can
-#  get at it.
-#
-elSensor = None
-azSensor = None
-sensorFailed = False
-SENSORS_PORT = '/dev/ttyUSB0'
-SENSOR_BITS = 2**14
-
-def init_sensor_system():
-    global elSensor
-    global azSensor
-    
-    if (elSensor == None or azSensor == None):
-        try:
-            elSensor = mb.Instrument(SENSORS_PORT, 1)
-            azSensor = mb.Instrument(SENSORS_PORT, 2)
-            elSensor.serial.baudrate = 9600
-        except:
-            elSensor = None
-            azSensor = None
-            sensorFailed = True
-        
-#
-# Functions for position sensors
+# Sensor interface
 #
 def get_el_sensor():
-    global elSensor
-    init_sensor_system()
-    try:
-        r = elSensor.read_register(0, 0)
-        return (float(r)/float(SENSOR_BITS))*360.0
-    except:
-        return -1000.0
+	global rpc2
+	return (rpc2.query_el_sensor())
 
 def get_az_sensor():
-    init_sensor_system()
-    global azSensor
-    try:
-        r = azSensor.read_register(0, 0)
-        return (float(r)/float(SENSOR_BITS))*360.0
-    except:
-        return -1000.0
+	global rpc2
+	return (rpc2.query_az_sensor())
 
 #
 # Take a decimal-degrees coordinate, and transform to the HH:MM:SS
@@ -560,7 +526,9 @@ from skyfield.api import load
 
 def main():
     global rpc
+    global rpc2
     rpc = xml.ServerProxy("http://localhost:36036")
+    rpc2 = xml.ServerProxy("http://localhost:9090")
     
     parser = argparse.ArgumentParser()
     parser.add_argument ("--ra", type=float, default=None, help="RA of object")
