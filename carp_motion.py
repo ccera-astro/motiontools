@@ -68,12 +68,12 @@ def set_el_speed(spd):
 # Sensor interface
 #
 def get_el_sensor():
-	global rpc2
-	return (rpc2.query_el_sensor())
+    global rpc2
+    return (rpc2.query_el_sensor())
 
 def get_az_sensor():
-	global rpc2
-	return (rpc2.query_az_sensor())
+    global rpc2
+    return (rpc2.query_az_sensor())
 
 #
 # Take a decimal-degrees coordinate, and transform to the HH:MM:SS
@@ -419,10 +419,10 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
     if (last_az > 180.0):
         el_speed = el_speed * -1.0
 
-	#
-	# Start the ball rolling...
-	#  at the initial speed, which will get adjusted 10 seconds from now
-	#
+    #
+    # Start the ball rolling...
+    #  at the initial speed, which will get adjusted 10 seconds from now
+    #
     set_az_speed(az_speed)
     set_el_speed(el_speed)
     time.sleep (minterval)
@@ -527,8 +527,7 @@ from skyfield.api import load
 def main():
     global rpc
     global rpc2
-    rpc = xml.ServerProxy("http://localhost:36036")
-    rpc2 = xml.ServerProxy("http://localhost:9090")
+
     
     parser = argparse.ArgumentParser()
     parser.add_argument ("--ra", type=float, default=None, help="RA of object")
@@ -538,8 +537,22 @@ def main():
     parser.add_argument ("--lon", type=float, default=-76.0559, help="Local longitude")
     parser.add_argument ("--elev", type=float, default=96.0, help="Local elevation (m)")
     parser.add_argument ("--planet", type=str, default=None, help="Planetary body")
+    parser.add_argument ("--motorproxy", type=str, default="http://localhost:36036",
+        help="XMLRPC Server for motors")
+    parser.add_argument ("--sensorproxy", type=str, default="http://localhost:9090",
+        help="XMLRPC Server for sensors")
     
     args = parser.parse_args()
+    
+    #
+    # We talk to the motors (MotionServer) via XMLRPC
+    #
+    rpc = xml.ServerProxy(args.motorproxy)
+    
+    #
+    # Similarly, we talk to the position sensors via XMLRPC
+    #
+    rpc2 = xml.ServerProxy(args.sensorproxy)
     
     #
     # Pick up targets

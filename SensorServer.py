@@ -72,7 +72,7 @@ def device_loop():
 		current_az = get_az_sensor()
 		time.sleep(0.05)
 		current_elev = get_el_sensor()
-		time.sleep(0.3333)
+		time.sleep(0.250)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--xmlport", type=int, required=True, help="XML Port")
