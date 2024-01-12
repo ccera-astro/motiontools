@@ -7,6 +7,8 @@
 #include <signal.h>
 #include <time.h>
 
+time_t trans_time;
+
 #define MOTOR_LOG_FILE "./motor_performance.dat"
 
 void log_motor_data(int which, double speed, double torque)
@@ -16,6 +18,7 @@ void log_motor_data(int which, double speed, double torque)
 	struct tm *ltp;
 	
 	time(&now);
+	trans_time = now;
 	
 	ltp = gmtime(&now);
 	
@@ -395,6 +398,27 @@ public:
     }
 };
 
+class QueryTimestamp: public xmlrpc_c::method {
+	SysManager *Manager;
+public:
+    QueryTimestamp(SysManager *myMgr) {
+        // signature and help strings are documentation -- the client
+        // can query this information with a system.methodSignature and
+        // system.methodHelp RPC.
+        this->_signature = "d:i";
+            // method's result and two arguments are integers
+        this->_help = "This method queries the timestamp";
+        this->Manager = myMgr;
+    }
+    void
+    execute(xmlrpc_c::paramList const& paramList,
+            xmlrpc_c::value *   const  retvalP) {
+        
+        double rval = (double)trans_time;
+		*retvalP = xmlrpc_c::value_double(rval);
+    }
+};
+
 int 
 SetUpXMLRPC(SysManager *myMgr) {
 
@@ -405,11 +429,13 @@ SetUpXMLRPC(SysManager *myMgr) {
         xmlrpc_c::methodPtr const ShutdownMethodP(new MotorShutdown(myMgr));
         xmlrpc_c::methodPtr const SysExitMethodP(new SysExit(myMgr));
         xmlrpc_c::methodPtr const EnableMethodP(new MotorEnable(myMgr));
+        xmlrpc_c::methodPtr const QueryMethodP(new QueryTimestamp(myMgr));
 
-        myRegistry.addMethod("Move", MoveMethodP);https://en.wikipedia.org/wiki/List_of_gold_mines_in_Canada#Ontario
+        myRegistry.addMethod("Move", MoveMethodP);
         myRegistry.addMethod("Shutdown", ShutdownMethodP);
         myRegistry.addMethod("Enable", EnableMethodP);
         myRegistry.addMethod("SysExit", SysExitMethodP);
+        myRegistry.addMethod("QueryTime", QueryMethodP);
         
         signal(SIGALRM, alarm_handler);
         signal(SIGINT, exit_handler);
