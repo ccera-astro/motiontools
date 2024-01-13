@@ -11,14 +11,19 @@ rpc = xml.ServerProxy(args.proxy)
 
 while True:
     now = time.time()
-    stamp = rpc.QueryTime(0)
-    if ((now - stamp) > args.timeout):
-        rpc.Shutdown(0)
-        time.sleep(5)
-        rpc.Shutdown(1)
-        time.sleep(5)
-        rpc.SysExit(0)
-        break
+    try:
+        stamp = rpc.QueryTime(0)
+        if (stamp > 1000 and ((now - stamp) > args.timeout)):
+            rpc.Shutdown(0)
+            time.sleep(5)
+            rpc.Shutdown(1)
+            time.sleep(5)
+            rpc.SysExit(0)
+            break
+    except:
+        print ("No comms with MotionServer....sleeping")
+        time.sleep(30)
+        pass
     time.sleep(10)
 
         
