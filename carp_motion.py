@@ -186,7 +186,7 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
 #
 # Returns: True for success False otherwise
 #
-def moveto(t_ra, t_dec, lat, lon, elev):
+def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset):
 
     #
     # Prime ephem to know about our location and time
@@ -248,8 +248,8 @@ def moveto(t_ra, t_dec, lat, lon, elev):
         #
         local.date = ephem.now()
         v.compute(local)
-        t_az = from_ephem_coord("%s" % v.az)
-        t_el = from_ephem_coord("%s" % v.alt)
+        t_az = from_ephem_coord("%s" % v.az) + azoffset
+        t_el = from_ephem_coord("%s" % v.alt) + eloffset
         
         if (t_el < ELEVATION_LIMITS[0] or t_el > ELEVATION_LIMITS[1]):
             set_el_speed(0.0)
@@ -354,7 +354,7 @@ def moveto(t_ra, t_dec, lat, lon, elev):
 #
 # Returns: True for success False otherwise
 #
-def track(t_ra, t_dec, lat, lon, elev, tracktime):
+def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset):
 
     #
     # Measurement interval, seconds
@@ -401,8 +401,8 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
     start_time = time.time()
  
     v.compute(local)
-    last_t_el = from_ephem_coord(v.alt)
-    last_t_az = from_ephem_coord(v.az)
+    last_t_el = from_ephem_coord(v.alt) + eloffset
+    last_t_az = from_ephem_coord(v.az) + azoffset
     last_el = get_el_sensor()
     last_az = get_az_sensor()
     
@@ -440,8 +440,8 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime):
         #
         local.date = ephem.now()
         v.compute(local)
-        t_az = from_ephem_coord("%s" % v.az)
-        t_el = from_ephem_coord("%s" % v.alt)
+        t_az = from_ephem_coord("%s" % v.az) + azoffset
+        t_el = from_ephem_coord("%s" % v.alt) + eloffset
         
         #
         # Get our current actual position
@@ -541,6 +541,8 @@ def main():
         help="XMLRPC Server for motors")
     parser.add_argument ("--sensorproxy", type=str, default="http://localhost:9090",
         help="XMLRPC Server for sensors")
+    parser.add_argument ("--azoffset", type=float, default=0.0, help="Azimuth offset")
+    parser.add_argument ("--eloffset", type=float, default=0.0, help="Elevation offset")
     
     args = parser.parse_args()
     
@@ -592,12 +594,12 @@ def main():
         tra = float(ra.hours)
         tdec = float(dec.degrees)
         
-    if (moveto(tra, tdec, args.lat, args.lon, args.elev) != True):
+    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset) != True):
         print ("Problem encountered--exiting prior to tracking")
         exit(1)
     
     if (args.tracking > 0):
-        track(tra, tdec, args.lat, args.lon, args.elev, args.tracking)
+        track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset)
 
 if __name__ == '__main__':
     main()
