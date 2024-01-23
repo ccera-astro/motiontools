@@ -56,13 +56,11 @@ SLEW_RATE_MAX = 21.0
 #
 def set_az_speed(spd):
     global rpc
-    rpc.Move(1,spd*AZ_SIGN)
-    return True
+    return rpc.Move(1,spd*AZ_SIGN)
 
 def set_el_speed(spd):
     global rpc
-    rpc.Move(0,spd*EL_SIGN)
-    return True
+    return rpc.Move(0,spd*EL_SIGN)
 
 #
 # Sensor interface
@@ -288,11 +286,19 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset):
         #
         if (el_running == True and el_speed != slew_tuple[0]):
             el_speed = slew_tuple[0]
-            set_el_speed(el_speed)
+            r = set_el_speed(el_speed)
+            if (r != 0):
+                print ("Problem during set_el_speed: %08X" % r)
+                rv = False
+                break
             
         if (al_running == True  and az_speed != slew_tuple[1]):
             az_speed = slew_tuple[1]
-            set_az_speed(az_speed)
+            r = set_az_speed(az_speed)
+            if (r != 0):
+                print ("Problem during set_az_speed: %08X" % r)
+                rv = False
+                break
         
         #
         # We haved reached the object in elevation--zero speed
@@ -423,8 +429,12 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset):
     # Start the ball rolling...
     #  at the initial speed, which will get adjusted 10 seconds from now
     #
-    set_az_speed(az_speed)
-    set_el_speed(el_speed)
+    if (set_az_speed(az_speed) != 0):
+        return False
+        
+    if (set_el_speed(el_speed) != 0):
+        return False
+        
     time.sleep (minterval)
     while True:
         #
@@ -502,10 +512,18 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset):
         # Update speeds if reasonable
         #
         if (abs(el_ratio) < 0.985 or abs(el_ratio) > 1.025):
-            set_el_speed(el_speed)
+            r = set_el_speed(el_speed)
+            if (r != 0):
+                print ("Problem during set_el_speed; %08X" % r)
+                rv = False
+                break
         
         if (abs(az_ratio) < 0.985 or abs(az_ratio) > 1.025):
-            set_az_speed(az_speed)
+            r = set_az_speed (az_speed)
+            if (r != 0):
+                print ("Problem during set_az_speed: %08X" % r)
+                rv = False
+                break
         
         #
         # We have a measurement interval for determining what the
@@ -599,7 +617,10 @@ def main():
         exit(1)
     
     if (args.tracking > 0):
-        track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset)
+        if (track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset)
+            != True):
+            print ("Problem encountered while tracking.  Done tracking")
+            exit(1)
 
 if __name__ == '__main__':
     main()
