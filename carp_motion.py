@@ -184,7 +184,7 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
 #
 # Returns: True for success False otherwise
 #
-def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset):
+def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
 
     #
     # Prime ephem to know about our location and time
@@ -262,6 +262,11 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset):
             
         cur_el = get_el_sensor()
         cur_az = get_az_sensor()
+        
+        ltp = time.gmtime()
+        lfp.write ("%02d,%02d,%02d,SLEW,%f,%f,%f,%f\n" % (ltp.tm_hour,
+            ltp.tm_min, ltp.tm_sec, t_az, t_el, cur_az, cur_el))
+        lfp.flush()
         
         #
         # This accounts for the fact that the two axes will not be
@@ -360,7 +365,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset):
 #
 # Returns: True for success False otherwise
 #
-def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset):
+def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
 
     #
     # Measurement interval, seconds
@@ -458,6 +463,11 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset):
         #
         cur_el = get_el_sensor()
         cur_az = get_az_sensor()
+        
+        ltp = time.gmtime()
+        lfp.write ("%02d,%02d,%02d,TRACK,%f,%f,%f,%f\n" % (ltp.tm_hour,
+            ltp.tm_min, ltp.tm_sec, t_az, t_el, cur_az, cur_el))
+        lfp.flush()
         
         if (cur_el < ELEVATION_LIMITS[0] or cur_el > ELEVATION_LIMITS[1]):
             print ("Elevation position limit exceeded (%f).  Halting tracking" % cur_el)
@@ -611,16 +621,24 @@ def main():
         #
         tra = float(ra.hours)
         tdec = float(dec.degrees)
+    ltp = time.gmtime()
+    ts = "%04d%02d%02d%02d%02d" % (ltp.tm_year, ltp.tm_mon, ltp.tm_mday,
+        ltp.tm_hour, ltp.tm_min)
+
+    fp = open("%s-motion.csv", "w" % ts)
+    fp.write("TARGET: %f %f\n" % (tra, tdec))
+    fp.flush()
         
-    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset) != True):
+    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset, fp) != True):
         print ("Problem encountered--exiting prior to tracking")
         exit(1)
     
     if (args.tracking > 0):
-        if (track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset)
+        if (track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset, fp)
             != True):
             print ("Problem encountered while tracking.  Done tracking")
             exit(1)
+    fp.close()
 
 if __name__ == '__main__':
     main()

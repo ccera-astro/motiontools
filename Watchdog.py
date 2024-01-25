@@ -31,7 +31,6 @@ while True:
             rpc.Shutdown(1)
             time.sleep(5)
             rpc.SysExit(0)
-            break
         sleeptime = 10
     except:
         print ("No comms with server...sleeping")
