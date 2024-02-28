@@ -59,8 +59,8 @@ void exit_handler(int q)
                     rval = -3;
                 }
             }
-            myPort.BrakeControl.BrakeSetting(which, BRAKE_PREVENT_MOTION);
-            sleep((BK_DELAY/1000)+3);
+            //myPort.BrakeControl.BrakeSetting(which, BRAKE_PREVENT_MOTION);
+            //sleep((BK_DELAY/1000)+3);
             myNode.EnableReq(false);
         }
     myMgr->PortsClose();
@@ -139,9 +139,9 @@ size_t portCount = 0;
         
         printf ("Ensuring brakes are engaged on startup\n");
         printf ("First brake\n");
-        myPort.BrakeControl.BrakeSetting(0, BRAKE_PREVENT_MOTION);
+        myPort.BrakeControl.BrakeSetting(0, BRAKE_AUTOCONTROL);
         printf ("Second brake\n");
-        myPort.BrakeControl.BrakeSetting(1, BRAKE_PREVENT_MOTION);
+        myPort.BrakeControl.BrakeSetting(1, BRAKE_AUTOCONTROL);
         sleep (BK_DELAY/1000);
         
         
@@ -189,7 +189,7 @@ size_t portCount = 0;
             theNode.Motion.VelLimit = VEL_LIM_RPM;              //Set Velocity Limit (RPM)
             theNode.Motion.MoveVelStart(0.0);                   //This should cause it to hold
             printf("Disengaging Brakes on Node %d\n", (int)iNode);
-            myPort.BrakeControl.BrakeSetting((int)iNode,BRAKE_ALLOW_MOTION);        
+            //myPort.BrakeControl.BrakeSetting((int)iNode,BRAKE_ALLOW_MOTION);        
         }
         // Allow brakes time to disengage before taking MOVE orders from anyone
         sleep(BK_DELAY/1000);
@@ -318,7 +318,7 @@ public:
             myNode.EnableReq(true);
             usleep(500000);
             myNode.Motion.MoveVelStart(0.0);
-            myPort.BrakeControl.BrakeSetting(which, BRAKE_ALLOW_MOTION);
+            //myPort.BrakeControl.BrakeSetting(which, BRAKE_ALLOW_MOTION);
             double timeout = Manager->TimeStampMsec() + 2000;           //define a timeout in case the node is unable to enable
             while (!myNode.Motion.VelocityReachedTarget()) {
                 if (Manager->TimeStampMsec() > timeout) {
@@ -354,7 +354,6 @@ public:
         
         int rval = 0;
         int const which(paramList.getInt(0));
-        https://en.wikipedia.org/wiki/List_of_gold_mines_in_Canada#Ontario
         paramList.verifyEnd(1);
         
         IPort &myPort = Manager->Ports(0);
@@ -370,8 +369,8 @@ public:
                     rval = -3;
                 }
             }
-            myPort.BrakeControl.BrakeSetting(which, BRAKE_PREVENT_MOTION);
-            sleep((BK_DELAY/1000)+3);
+            //myPort.BrakeControl.BrakeSetting(which, BRAKE_PREVENT_MOTION);
+            sleep((BK_DELAY/1000));
             myNode.EnableReq(false);
         }
         else
