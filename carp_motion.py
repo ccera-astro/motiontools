@@ -18,8 +18,8 @@ ELEVATION = 70.00
 #
 # Pre-reduction ahead of the main gearboxes
 #
-ELEV_PREFIX = 5.0
-AZ_PREFIX = 7.5
+ELEV_PREFIX = 7.5
+AZ_PREFIX = 5.0
 
 #
 # Total ratios from the PREFIX gearing, and the main gearing
@@ -41,14 +41,14 @@ DEG_MINUTE = 0.25
 #
 # Soft limits for motion
 #
-ELEVATION_LIMITS = (0.5,91.5)
-AZIMUTH_LIMITS = (0.5,359.5)
+ELEVATION_LIMITS = (1.5,90.0)
+AZIMUTH_LIMITS = (1.0,359.0)
 
 
 #
 # A rate that is manageable by both axes
 #
-SLEW_RATE_MAX = 21.0
+SLEW_RATE_MAX = 9.75
 
 
 #
@@ -61,6 +61,25 @@ def set_az_speed(spd):
 def set_el_speed(spd):
     global rpc
     return rpc.Move(0,spd*EL_SIGN)
+    
+def query_el_torque():
+    global rpc
+    return rpc.QueryTorque(0)
+
+def query_az_torque():
+    global rpc
+    return rpc.QueryTorque(1)
+
+def move_az_angle(angle):
+    global rpc
+    
+    shaft_angle = angle * AZ_RATIO
+    return rpc.AngleMove(1,float(shaft_angle*AZ_SIGN))
+
+def move_el_angle(angle):
+    global rpc
+    shaft_angle = angle * ELEV_RATIO
+    return rpc.AngleMove(0,float(shaft_angle*ELEV_SIGN))
 
 #
 # Sensor interface
@@ -146,22 +165,14 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
     # Adjust az_slew/el_slew based on difference between target and current
     #
     if (abs(targ_el-cur_el) <= 2.5):
-        el_slew = el_slew / 2.0
+        el_slew = el_slew / 1.5
     if (abs(targ_el-cur_el) <= 1.25):
-        el_slew = el_slew / 2.0
-    if (abs(targ_el-cur_el) <= 0.625):
-        el_slew = el_slew / 3.0
-    if (abs(targ_el-cur_el) <= 0.3125):
-        el_slew = el_slew / 2.0
+        el_slew = el_slew / 1.5
 
     if (abs(targ_az-cur_az) <= 2.5):
-        az_slew = az_slew / 2.0
+        az_slew = az_slew / 1.5
     if (abs(targ_az-cur_az) <= 1.25):
-        az_slew = az_slew / 2.0
-    if (abs(targ_az-cur_az) <= 0.625):
-        az_slew = az_slew / 3.0
-    if (abs(targ_az-cur_az) <= 0.3125):
-        az_slew = az_slew / 2.0
+        az_slew = az_slew / 1.5
 
     #
     # Adjust sign
@@ -216,6 +227,14 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
     el_running = True
     az_running = True
     
+    #
+    # "Cooling" variables to allow the torque limits (which are probably
+    #   temperature-based) drop to acceptable levels before running the
+    #   axis again.
+    #
+    el_cooling = False
+    az_cooling = False
+    
     
     #
     # Init our weirdness counter
@@ -230,6 +249,11 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
     #
     # Forever, until we zero-in on the target
     #
+    alpha = 0.250
+    beta = 1.0 - alpha
+    el_torque_avg = 50.0
+    az_torque_avg = 50.0
+    
     while True:
         limits = False
         #
@@ -274,9 +298,9 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
         #  "close" at the start, but if we stop, it will drift further
         #  away.
         #
-        if (abs(cur_el - t_el) > 0.05):
+        if (abs(cur_el - t_el) > 0.1 and not el_cooling):
             el_running = True
-        if (abs(cur_az - t_az) > 0.05):
+        if (abs(cur_az - t_az) > 0.1 and not az_cooling):
             az_running = True
             
         #
@@ -289,26 +313,44 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
         # Update commanded motor speed if desired rate is different from
         #   current rate
         #
-        if (el_running == True and el_speed != slew_tuple[0]):
+        if ((not el_cooling) and (el_running == True) and el_speed != slew_tuple[0]):
             el_speed = slew_tuple[0]
             r = set_el_speed(el_speed)
             if (r != 0):
                 print ("Problem during set_el_speed: %08X" % r)
                 rv = False
                 break
+        
+        #
+        # Compute a smoothed torque for both axes
+        #
+        el_torque_avg = (alpha * query_el_torque()) + (beta * el_torque_avg)
+        az_torque_avg = (alpha * query_az_torque()) + (beta * az_torque_avg)
+        
+        if ((not el_cooling) and el_torque_avg >= 80):
+            el_cooling = True
+            set_el_speed(0)
+        if (el_cooling and el_torque_avg <= 60):
+            el_cooling = False
             
-        if (al_running == True  and az_speed != slew_tuple[1]):
+            
+        if ((not az_cooling) and (az_running == True) and az_speed != slew_tuple[1]):
             az_speed = slew_tuple[1]
             r = set_az_speed(az_speed)
             if (r != 0):
                 print ("Problem during set_az_speed: %08X" % r)
                 rv = False
                 break
-        
+        if ((not az_cooling) and (az_torque_avg >= 80)):
+            az_cooling = True
+            set_az_speed(0)
+        if (az_cooling and (az_torque_avg <= 60)):
+            az_cooling = False
+
         #
         # We haved reached the object in elevation--zero speed
         #
-        if (abs(cur_el-t_el) < 0.05):
+        if (abs(cur_el-t_el) <= 0.1):
             set_el_speed(0.0)
             el_speed = 0.0
             el_running = False
@@ -316,13 +358,13 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
         #
         # We have reached the object in azimuth--zero speed
         #
-        if (abs(cur_az - t_az) < 0.05):
+        if (abs(cur_az - t_az) <= 0.1):
             set_az_speed(0.0)
             el_speed = 0.0
             az_running = False
             
         #
-        # Wait 1 second between updates
+        # Wait 2 seconds between updates
         #
         time.sleep(2)
         
@@ -330,10 +372,10 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
         # Hmm, despite there being a 2-second pause the relevant axis
         #   hasn't moved.  Declare some "weirdness"
         #
-        if (el_running == True and (abs(cur_el-get_el_sensor()) < 0.025)):
+        if ((not el_cooling) and (el_running == True) and (abs(cur_el-get_el_sensor()) < 0.025)):
             weird_count += 1
 
-        if (el_running == True and abs(cur_az-get_az_sensor()) < 0.025):
+        if ((not az_cooling) and (az_running == True) and (abs(cur_az-get_az_sensor()) < 0.025)):
             weird_count += 1
         
         if (weird_count >= 5):
@@ -353,6 +395,11 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
         rv = False
     
     return rv
+
+"""
+#
+# RATE-BASED TRACKING
+#
 
 #
 # Track target (assumes already recently moved-to)
@@ -540,6 +587,107 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
         #   current angular rate of the machine is, and what is
         #   actually required based on the ephemeris calculations.
         #
+        time.sleep(minterval)
+    #
+    # No matter how we exit from this loop, make sure things are "safe"
+    #
+    set_az_speed(0.0)
+    set_el_speed(0.0)
+    
+    return rv
+"""
+
+#
+# Position-based (stuttered) tracking
+#
+
+#
+# Track target (assumes already recently moved-to)
+#
+# t_ra - target RA in decimal-float format
+# t_dec - target DEC in decimal-float format
+# lat - local geo latitude in decimal-float format
+# lon - local geo longitude in decimal-float format
+# elev - local elevation in decimal/float format  
+#
+# Returns: True for success False otherwise
+#
+def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
+
+    #
+    # Measurement interval, seconds
+    #
+    minterval = 7.5
+    
+    #
+    # Prime ephem to know about our location and time
+    #
+    local = ephem.Observer()
+    local.lat = to_ephem_coord(lat)
+    local.lon = to_ephem_coord(lon)
+    local.elevation = elev
+    local.pressure = 0
+    
+    #
+    # Do intial compute on the target
+    #  celestial coordinate
+    #
+    local.date = ephem.now()
+    v = ephem.FixedBody()
+    v._ra = to_ephem_coord(t_ra)
+    v._dec = to_ephem_coord(t_dec)
+    
+    
+    while True:
+        #
+        # Looks like we're done
+        #
+        if ((time.time() - start_time) >= tracktime):
+            set_az_speed(0.0)
+            set_el_speed(0.0)
+            break
+        
+        #
+        # Update the ephem sky coordinates
+        #
+        local.date = ephem.now()
+        v.compute(local)
+        t_az = from_ephem_coord("%s" % v.az) + azoffset
+        t_el = from_ephem_coord("%s" % v.alt) + eloffset
+        
+        #
+        # Get our current actual position
+        #
+        cur_el = get_el_sensor()
+        cur_az = get_az_sensor()
+        
+        #
+        # If elevation has drifted enough, move through computed angle
+        #
+        if (abs(cur_el - t_el) > 0.1):
+            move_el_angle(t_el-cur_el)
+        
+        #
+        # If azimuth has drifted enough, move through computed angle
+        #
+        if (abs(cur_az - t_az) > 0.1):
+            move_az_angle(t_az-cur_az)
+        
+        ltp = time.gmtime()
+        lfp.write ("%02d,%02d,%02d,TRACK,%f,%f,%f,%f\n" % (ltp.tm_hour,
+            ltp.tm_min, ltp.tm_sec, t_az, t_el, cur_az, cur_el))
+        lfp.flush()
+        
+        if (cur_el < ELEVATION_LIMITS[0] or cur_el > ELEVATION_LIMITS[1]):
+            print ("Elevation position limit exceeded (%f).  Halting tracking" % cur_el)
+            rv = False
+            break
+        
+        if (cur_az < AZIMUTH_LIMITS[0] or cur_az > AZIMUTH_LIMITS[1]):
+            print ("Azimuth position limit exceeded (%f).  Halting tracking" % cur_az)
+            rv = False
+            break
+
         time.sleep(minterval)
     #
     # No matter how we exit from this loop, make sure things are "safe"

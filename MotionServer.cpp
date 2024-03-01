@@ -85,9 +85,7 @@ bool IsBusPowerLow(INode &theNode) {
 //*********************************************************************************
 
 #define ACC_LIM_RPM_PER_SEC 2500
-#define VEL_LIM_RPM         2000
-#define MOVE_DISTANCE_CNTS  10000   
-#define NUM_MOVES           5
+#define VEL_LIM_RPM         1750  
 #define TIME_TILL_TIMEOUT   10000   //The timeout used for homing(ms)
 
 
@@ -335,6 +333,49 @@ public:
     }
 };
 
+class AngleMove : public xmlrpc_c::method {
+    SysManager *Manager;
+public:
+    AngleMove(SysManager *myMgr) {
+        // signature and help strings are documentation -- the client
+        // can query this information with a system.methodSignature and
+        // system.methodHelp RPC.
+        this->_signature = "i:id";
+            // method's result and two arguments are integers
+        this->_help = "This method moves a motor through some number of degrees";
+        this->Manager = myMgr;
+    }
+    void
+    execute(xmlrpc_c::paramList const& paramList,
+            xmlrpc_c::value *   const  retvalP) {
+        
+        int rval = 0;
+        int const which(paramList.getInt(0));
+        double const angle(paramList.getDouble(0));
+        
+        paramList.verifyEnd(1);
+        
+        IPort &myPort = Manager->Ports(0);
+        int cnt = (int)myPort.NodeCount();
+        if (which < cnt)
+        {
+    
+            INode &myNode = myPort.Nodes(which);
+            //Get the positioning resolution of the Node
+			uint32_t myPosnResolution = myNode.Info.PositioningResolution;
+            double target;
+            
+            // Turn angle into rotations, and then into encoder counts
+            target = (angle / 360.0) * (double)myPosnResolution;
+            myNode.Motion.MovePosnStart((int32_t)target, false, false);
+        }
+        else
+        {
+            rval = -2;
+        }
+        *retvalP = xmlrpc_c::value_int(rval);
+    }
+};
 
 class MotorShutdown : public xmlrpc_c::method {
     SysManager *Manager;
@@ -515,6 +556,44 @@ public:
     }
 };
 
+class QueryTorque: public xmlrpc_c::method {
+    SysManager *Manager;
+public:
+    QueryTorque(SysManager *myMgr) {
+        // signature and help strings are documentation -- the client
+        // can query this information with a system.methodSignature and
+        // system.methodHelp RPC.
+        this->_signature = "d:i";
+            // method's result and two arguments are integers
+        this->_help = "This method queries current torque alerts";
+        this->Manager = myMgr;
+    }
+    void
+    execute(xmlrpc_c::paramList const& paramList,
+            xmlrpc_c::value *   const  retvalP) {
+        
+        int const which(paramList.getInt(0));
+        double rval = 0;
+        
+        paramList.verifyEnd(1);
+        
+        IPort &myPort = Manager->Ports(0);
+        int cnt = (int)myPort.NodeCount();
+        if (which < cnt)
+        {
+            INode &theNode = myPort.Nodes(which);
+            double myTrq = theNode.Motion.TrqMeasured;
+            rval = myTrq;
+        }
+        else
+        {
+            rval = -2.0;
+        }
+        *retvalP = xmlrpc_c::value_double(rval);
+    }
+};
+
+
 int 
 SetUpXMLRPC(SysManager *myMgr) {
 
@@ -528,6 +607,8 @@ SetUpXMLRPC(SysManager *myMgr) {
         xmlrpc_c::methodPtr const QueryMethodP(new QueryTimestamp(myMgr));
         xmlrpc_c::methodPtr const QueryAlertsP(new QueryAlerts(myMgr));
         xmlrpc_c::methodPtr const ResetAlertsP(new ResetAlerts(myMgr));
+        xmlrpc_c::methodPtr const QueryTorqueP(new QueryTorque(myMgr));
+        xmlrpc_c::methodPtr const AngleMoveP(new AngleMove(myMgr));
 
         myRegistry.addMethod("Move", MoveMethodP);
         myRegistry.addMethod("Shutdown", ShutdownMethodP);
@@ -536,6 +617,8 @@ SetUpXMLRPC(SysManager *myMgr) {
         myRegistry.addMethod("QueryTime", QueryMethodP);
         myRegistry.addMethod("QueryAlerts", QueryAlertsP);
         myRegistry.addMethod("ResetAlerts", ResetAlertsP);
+        myRegistry.addMethod("QueryTorque", QueryTorqueP);
+        myRegistry.addMethod("AngleMove", AngleMoveP);
         
         signal(SIGALRM, alarm_handler);
         signal(SIGINT, exit_handler);
