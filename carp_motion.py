@@ -44,12 +44,15 @@ DEG_MINUTE = 0.25
 ELEVATION_LIMITS = (1.5,90.0)
 AZIMUTH_LIMITS = (1.0,359.0)
 
+#
+# Gear spin max
+GEAR_SPIN_MAX = 1750.0
 
 #
-# A rate that is manageable by both axes
+# An angular rate that is manageable by both axes
 #
-SLEW_RATE_MAX = 9.75
-
+ELEV_SLEW_RATE_MAX = (GEAR_SPIN_MAX / ELEV_RATIO) * 360.0
+AZ_SLEW_RATE_MAX = (GEAR_SPIN_MAX / AZIM_RATIO) * 360.0
 
 #
 # Motor server interface
@@ -153,13 +156,14 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
     #
     # We want to turn our degrees/min MAX slew rate into a motor RPM
     #
-    max_slew = SLEW_RATE_MAX/360.0
-    
+    max_slew_el = ELEV_SLEW_RATE_MAX/360.0
+    max_slew_az = AZ_SLEW_RATE_MAX/360.0
+
     #
     # Adjust for the gearing on the two motors
     #
-    el_slew = max_slew * ELEV_RATIO
-    az_slew = max_slew * AZIM_RATIO
+    el_slew = max_slew_el * ELEV_RATIO
+    az_slew = max_slew_az * AZIM_RATIO
     
     #
     # Adjust az_slew/el_slew based on difference between target and current
@@ -168,11 +172,15 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
         el_slew = el_slew / 1.5
     if (abs(targ_el-cur_el) <= 1.25):
         el_slew = el_slew / 1.5
+    if (abs(targ_el-cur_el) < 0.75):
+        el_slew = el_slew / 3.0
 
     if (abs(targ_az-cur_az) <= 2.5):
         az_slew = az_slew / 1.5
     if (abs(targ_az-cur_az) <= 1.25):
         az_slew = az_slew / 1.5
+    if (abs(targ_az_cur_az) < 0.75):
+        az_slew = az_slew / 3.0
 
     #
     # Adjust sign
@@ -195,7 +203,7 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
 #
 # Returns: True for success False otherwise
 #
-def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
+def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
 
     #
     # Prime ephem to know about our location and time
@@ -249,7 +257,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
     #
     # Forever, until we zero-in on the target
     #
-    alpha = 0.250
+    alpha = 0.125
     beta = 1.0 - alpha
     el_torque_avg = 50.0
     az_torque_avg = 50.0
@@ -268,10 +276,14 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
         #
         # Update the ephem sky coordinates
         #
-        local.date = ephem.now()
-        v.compute(local)
-        t_az = from_ephem_coord("%s" % v.az) + azoffset
-        t_el = from_ephem_coord("%s" % v.alt) + eloffset
+        if (absolute == False):
+            local.date = ephem.now()
+            v.compute(local)
+            t_az = from_ephem_coord("%s" % v.az) + azoffset
+            t_el = from_ephem_coord("%s" % v.alt) + eloffset
+        else:
+            t_az = t_ra
+            t_el = t_dec
         
         if (t_el < ELEVATION_LIMITS[0] or t_el > ELEVATION_LIMITS[1]):
             set_el_speed(0.0)
@@ -327,11 +339,22 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
         el_torque_avg = (alpha * query_el_torque()) + (beta * el_torque_avg)
         az_torque_avg = (alpha * query_az_torque()) + (beta * az_torque_avg)
         
+        #
+        # If not already "cooling" and torque exceeds limit,
+        #   set speed to zero, and wait.
+        #
         if ((not el_cooling) and el_torque_avg >= 80):
             el_cooling = True
-            set_el_speed(0)
+            set_el_speed(0.0)
+            el_speed = 0.0
+            print ("EL torque limit exceeded....cooling")
+        
+        #
+        # Torque has fallen below lower limit, turn motion on again.
+        #
         if (el_cooling and el_torque_avg <= 60):
             el_cooling = False
+            print ("EL torque limit restored")
             
             
         if ((not az_cooling) and (az_running == True) and az_speed != slew_tuple[1]):
@@ -341,11 +364,23 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp):
                 print ("Problem during set_az_speed: %08X" % r)
                 rv = False
                 break
+        
+        #
+        # If not already "cooling" and torque exceeds limits, set speed
+        #  to zero for  a bit.
+        #
         if ((not az_cooling) and (az_torque_avg >= 80)):
             az_cooling = True
-            set_az_speed(0)
+            set_az_speed(0.0)
+            az_speed = 0
+            print ("AZ torque limit exceeded...cooling")
+        
+        #
+        # Torque has fallen, restore motion.
+        #
         if (az_cooling and (az_torque_avg <= 60)):
             az_cooling = False
+            print ("AZ torque limit restored")
 
         #
         # We haved reached the object in elevation--zero speed
@@ -719,7 +754,7 @@ def main():
         help="XMLRPC Server for sensors")
     parser.add_argument ("--azoffset", type=float, default=0.0, help="Azimuth offset")
     parser.add_argument ("--eloffset", type=float, default=0.0, help="Elevation offset")
-    
+    parser.add_argument ("--absolute", action="store_true", default=False, help="Absolute position mode")
     args = parser.parse_args()
     
     #
@@ -777,11 +812,11 @@ def main():
     fp.write("TARGET: %f %f\n" % (tra, tdec))
     fp.flush()
         
-    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset, fp) != True):
+    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset, fp, args.absolute) != True):
         print ("Problem encountered--exiting prior to tracking")
         exit(1)
     
-    if (args.tracking > 0):
+    if (args.absolute == False and args.tracking > 0):
         if (track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset, fp)
             != True):
             print ("Problem encountered while tracking.  Done tracking")
