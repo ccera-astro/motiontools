@@ -652,7 +652,7 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
     #
     # Measurement interval, seconds
     #
-    minterval = 7.5
+    minterval = 8
     
     #
     # Prime ephem to know about our location and time

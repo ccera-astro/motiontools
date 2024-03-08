@@ -23,12 +23,13 @@ while True:
         stamp = rpc.QueryTime(0)
         elspeed = rpc2.query_el_rate()
         azspeed = rpc2.query_az_rate()
-        if (elspeed > 0.6 or azspeed > 1.5):
+        if (elspeed > 0.3 or azspeed > 0.5):
             rpc.Shutdown(0)
-            time.sleep(5)
+            time.sleep(1)
             rpc.Shutdown(1)
             time.sleep(1)
             rpc.SysExit(0)
+            print ("EL or AZ speed exceeded--shutting down motion server!")
         alerts_0 = rpc.QueryAlerts(0)
         alerts_1 = rpc.QueryAlerts(1)
         if (alerts_0 not in OKrets):

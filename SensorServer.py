@@ -95,6 +95,7 @@ def device_loop():
         #
         # Compute rates
         #
+
         #
         # Elevation
         t = current_elev - last_elev
