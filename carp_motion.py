@@ -95,6 +95,10 @@ def get_az_sensor():
     global rpc2
     return (rpc2.query_az_sensor())
 
+def get_both_sensors():
+    global rpc2
+    return (rpc2.query_both_axes())
+
 #
 # Take a decimal-degrees coordinate, and transform to the HH:MM:SS
 #   that ephem uses
@@ -295,9 +299,10 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         
         if (limits == True):
             break
-            
-        cur_el = get_el_sensor()
-        cur_az = get_az_sensor()
+        
+        axes = get_both_sensors()
+        cur_el = axes[0]
+        cur_az = axes[1]
         
         ltp = time.gmtime()
         lfp.write ("%02d,%02d,%02d,SLEW,%f,%f,%f,%f\n" % (ltp.tm_hour,
@@ -693,8 +698,9 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
         #
         # Get our current actual position
         #
-        cur_el = get_el_sensor()
-        cur_az = get_az_sensor()
+        axes = get_both_sensors()
+        cur_el = axes[0]
+        cur_az = axes[1]
         
         #
         # If elevation has drifted enough, move through computed angle
