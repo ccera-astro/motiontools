@@ -137,6 +137,7 @@ xmlserver.register_function(query_el_sensor)
 xmlserver.register_function(query_az_sensor)
 xmlserver.register_function(query_az_rate)
 xmlserver.register_function(query_el_rate)
+xmlserver.register_function(query_both_axes)
 server_thread = threading.Thread(target=xmlserver.serve_forever)
 server_thread.daemon = True
 server_thread.start()
