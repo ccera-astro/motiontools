@@ -76,6 +76,12 @@ def query_az_rate():
     global az_rate
     return (az_rate)
 
+def query_both_axes():
+    global current_az
+    global current_elev
+    
+    return (current_elev,current_az)
+
 def device_loop():
     global current_az
     global current_elev
