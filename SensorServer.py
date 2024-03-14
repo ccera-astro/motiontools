@@ -82,18 +82,22 @@ def query_both_axes():
     
     return (current_elev,current_az)
 
-def device_loop():
+def device_loop(eloffs,azoffs):
     global current_az
     global current_elev
+    global last_az
+    global last_elev
     
     while (True):
         current_az = get_az_sensor()
+        current_az = current_az + azoffs
         if (last_az < -20.0):
             last_az = current_az
             last_az_time = time.time()
         time.sleep(0.05)
 
         current_elev = get_el_sensor()
+        current_elev = current_elev + eloffs
         if (last_elev < -20.0):
             last_elev = current_elev
             last_elev_time = time.time()
@@ -125,6 +129,8 @@ def device_loop():
 parser = argparse.ArgumentParser()
 parser.add_argument("--xmlport", type=int, required=True, help="XML Port")
 parser.add_argument("--serialport", type=int, default=SENSORS_PORT, help="Serial port")
+parser.add_argument("--eloffset", type=float, default=0.0, help="Elevation offset")
+parser.add_argument("--azoffset", type=float, default=0.0, help="Azimuth offset")
 args = parser.parse_args()
 
 SENSORS_PORT = args.serialport
@@ -145,4 +151,4 @@ server_thread.start()
 #
 # Loop getting values from the sensor hardware
 #
-device_loop()
+device_loop(args.eloffset, args.azoffset)
