@@ -18,9 +18,9 @@ def get_level(xmlstring):
         if (inited == False):
             rpchandle = xmlrpc.ServerProxy(xmlstring, allow_none=True)
             inited = True
-        r = rpchandle.get_level()
+        r = rpchandle.query_both_axes()
     except:
-        r = -99.99
+        r = (-99.99,-99.0)
         pass
     return r
 
@@ -82,7 +82,7 @@ class Window(QWidget):
                 self.label.setText(self.axis+": "+line)
         else:
             l = get_level(self.xmlrpc)
-            self.label.setText(self.axis+": %6.2f" % l)
+            self.label.setText("ELEVATION: %6.2f AZIMUTH %6.2f" % (l[0], l[1]))
 
 
 parser = argparse.ArgumentParser(description="Display axis position")
