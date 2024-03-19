@@ -82,7 +82,7 @@ class Window(QWidget):
                 self.label.setText(self.axis+": "+line)
         else:
             l = get_level(self.xmlrpc)
-            self.label.setText("ELEVATION: %6.2f AZIMUTH %6.2f" % (l[0], l[1]))
+            self.label.setText("ELEVATION: %6.2f\nAZIMUTH: %6.2f" % (l[0], l[1]))
 
 
 parser = argparse.ArgumentParser(description="Display axis position")
