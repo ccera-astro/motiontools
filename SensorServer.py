@@ -10,6 +10,7 @@ import xmlrpc.server
 import minimalmodbus as mb
 from xmlrpc.server import SimpleXMLRPCServer
 import threading
+import time
 
 current_elev = 0.0
 current_az = 0.0
@@ -109,13 +110,13 @@ def device_loop(eloffs,azoffs):
         #
         # Elevation
         t = current_elev - last_elev
-        elev_rate = abs(t) / (time.time() - last_elev_time())
+        elev_rate = abs(t) / (time.time() - last_elev_time)
         
         #
         # Azimuth
         #
         t = current_az - last_az
-        az_rate = abs(t) / (time.time() - last_az_time())
+        az_rate = abs(t) / (time.time() - last_az_time)
         
         #
         # Once computed, make "last" == "current"
@@ -128,7 +129,7 @@ def device_loop(eloffs,azoffs):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--xmlport", type=int, required=True, help="XML Port")
-parser.add_argument("--serialport", type=int, default=SENSORS_PORT, help="Serial port")
+parser.add_argument("--serialport", type=str, default=SENSORS_PORT, help="Serial port")
 parser.add_argument("--eloffset", type=float, default=0.0, help="Elevation offset")
 parser.add_argument("--azoffset", type=float, default=0.0, help="Azimuth offset")
 args = parser.parse_args()
