@@ -84,8 +84,8 @@ bool IsBusPowerLow(INode &theNode) {
 //sequential repeated moves on each axis.
 //*********************************************************************************
 
-#define ACC_LIM_RPM_PER_SEC 2500
-#define VEL_LIM_RPM         1750  
+#define ACC_LIM_RPM_PER_SEC 1800
+#define VEL_LIM_RPM         1500  
 #define TIME_TILL_TIMEOUT   10000   //The timeout used for homing(ms)
 
 

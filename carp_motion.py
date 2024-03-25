@@ -46,7 +46,7 @@ AZIMUTH_LIMITS = (1.0,359.0)
 
 #
 # Gear spin max
-GEAR_SPIN_MAX = 1750.0
+GEAR_SPIN_MAX = 1500.0
 
 #
 # An angular rate that is manageable by both axes
@@ -175,16 +175,16 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
     if (abs(targ_el-cur_el) <= 2.5):
         el_slew = el_slew / 1.5
     if (abs(targ_el-cur_el) <= 1.25):
-        el_slew = el_slew / 1.5
-    if (abs(targ_el-cur_el) < 0.75):
-        el_slew = el_slew / 3.0
+        el_slew = el_slew / 2.0
+    if (abs(targ_el-cur_el) <= 0.5):
+        el_slew = el_slew / 5.5
 
     if (abs(targ_az-cur_az) <= 2.5):
         az_slew = az_slew / 1.5
     if (abs(targ_az-cur_az) <= 1.25):
-        az_slew = az_slew / 1.5
-    if (abs(targ_az_cur_az) < 0.75):
-        az_slew = az_slew / 3.0
+        az_slew = az_slew / 2.0
+    if (abs(targ_az_cur_az) <= 0.5):
+        az_slew = az_slew / 5.5
 
     #
     # Adjust sign
@@ -240,15 +240,6 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
     az_running = True
     
     #
-    # "Cooling" variables to allow the torque limits (which are probably
-    #   temperature-based) drop to acceptable levels before running the
-    #   axis again.
-    #
-    el_cooling = False
-    az_cooling = False
-    
-    
-    #
     # Init our weirdness counter
     #
     weird_count = 0
@@ -261,11 +252,6 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
     #
     # Forever, until we zero-in on the target
     #
-    alpha = 0.125
-    beta = 1.0 - alpha
-    el_torque_avg = 50.0
-    az_torque_avg = 50.0
-    
     while True:
         limits = False
         #
@@ -315,9 +301,9 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         #  "close" at the start, but if we stop, it will drift further
         #  away.
         #
-        if (abs(cur_el - t_el) > 0.1 and not el_cooling):
+        if (abs(cur_el - t_el) > 0.15):
             el_running = True
-        if (abs(cur_az - t_az) > 0.1 and not az_cooling):
+        if (abs(cur_az - t_az) > 0.15):
             az_running = True
             
         #
@@ -330,39 +316,15 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         # Update commanded motor speed if desired rate is different from
         #   current rate
         #
-        if ((not el_cooling) and (el_running == True) and el_speed != slew_tuple[0]):
+        if ((el_running == True) and el_speed != slew_tuple[0]):
             el_speed = slew_tuple[0]
             r = set_el_speed(el_speed)
             if (r != 0):
                 print ("Problem during set_el_speed: %08X" % r)
                 rv = False
                 break
-        
-        #
-        # Compute a smoothed torque for both axes
-        #
-        el_torque_avg = (alpha * query_el_torque()) + (beta * el_torque_avg)
-        az_torque_avg = (alpha * query_az_torque()) + (beta * az_torque_avg)
-        
-        #
-        # If not already "cooling" and torque exceeds limit,
-        #   set speed to zero, and wait.
-        #
-        if ((not el_cooling) and el_torque_avg >= 80):
-            el_cooling = True
-            set_el_speed(0.0)
-            el_speed = 0.0
-            print ("EL torque limit exceeded....cooling")
-        
-        #
-        # Torque has fallen below lower limit, turn motion on again.
-        #
-        if (el_cooling and el_torque_avg <= 60):
-            el_cooling = False
-            print ("EL torque limit restored")
-            
-            
-        if ((not az_cooling) and (az_running == True) and az_speed != slew_tuple[1]):
+                
+        if ((az_running == True) and az_speed != slew_tuple[1]):
             az_speed = slew_tuple[1]
             r = set_az_speed(az_speed)
             if (r != 0):
@@ -370,23 +332,6 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
                 rv = False
                 break
         
-        #
-        # If not already "cooling" and torque exceeds limits, set speed
-        #  to zero for  a bit.
-        #
-        if ((not az_cooling) and (az_torque_avg >= 80)):
-            az_cooling = True
-            set_az_speed(0.0)
-            az_speed = 0
-            print ("AZ torque limit exceeded...cooling")
-        
-        #
-        # Torque has fallen, restore motion.
-        #
-        if (az_cooling and (az_torque_avg <= 60)):
-            az_cooling = False
-            print ("AZ torque limit restored")
-
         #
         # We haved reached the object in elevation--zero speed
         #
@@ -404,18 +349,18 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
             az_running = False
             
         #
-        # Wait 2 seconds between updates
+        # Wait 1.5 seconds between updates
         #
-        time.sleep(2)
+        time.sleep(1.5)
         
         #
         # Hmm, despite there being a 2-second pause the relevant axis
         #   hasn't moved.  Declare some "weirdness"
         #
-        if ((not el_cooling) and (el_running == True) and (abs(cur_el-get_el_sensor()) < 0.025)):
+        if ((el_running == True) and (abs(cur_el-get_el_sensor()) < 0.025)):
             weird_count += 1
 
-        if ((not az_cooling) and (az_running == True) and (abs(cur_az-get_az_sensor()) < 0.025)):
+        if ((az_running == True) and (abs(cur_az-get_az_sensor()) < 0.025)):
             weird_count += 1
         
         if (weird_count >= 5):
