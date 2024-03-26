@@ -24,8 +24,21 @@ AZ_PREFIX = 5.0
 #
 # Total ratios from the PREFIX gearing, and the main gearing
 #
-ELEV_RATIO = ELEV_PREFIX * (500.47 * 16)
-AZIM_RATIO = AZ_PREFIX * (500.47 * 10)
+
+#
+# Ratio of the gearbox, up to the output pinion
+#
+BOX_RATIO = (9.8125 * 8.368 * 6.095)
+
+#
+# The main gearboxes, out to the drive pinion are all the same,
+#   given above as BOX_RATIO.
+#
+# But elevation and azimuth have different ratios between their
+#  ouptut pinions and the ring or sector gear that they drive
+#
+ELEV_RATIO = ELEV_PREFIX * (BOX_RATIO * 16.0)
+AZIM_RATIO = AZ_PREFIX * (BOX_RATIO * 10.0)
 
 #
 # Signs (might need to flip one or both of these on the actual machine)
@@ -142,6 +155,19 @@ def track_rate(declination):
     r_azim = (r * AZIM_RATIO) / 360.0
     return ((r_elev,r_azim))
 
+#
+# Return a speed proportional to difference between limit and actual
+#
+def proportional_speed(pdiff,lim):
+    v1 = lim-x
+    v2 = GEAR_SPIN_MAX/(1+1.33*(v1*v1))
+    return v2
+
+#
+# We start going into proportional control at this limit in offset between
+#  the current and target position (degrees)
+#
+PROP_LIMIT = 2.5
 
 #
 # Determine desired slew rate, based on axis position offsets from target
@@ -158,34 +184,20 @@ def track_rate(declination):
 def slew_rate(targ_el, targ_az, cur_el, cur_az):
     
     #
-    # We want to turn our degrees/min MAX slew rate into a motor RPM
+    # Compute for elevation
     #
-    max_slew_el = ELEV_SLEW_RATE_MAX/360.0
-    max_slew_az = AZ_SLEW_RATE_MAX/360.0
-
-    #
-    # Adjust for the gearing on the two motors
-    #
-    el_slew = max_slew_el * ELEV_RATIO
-    az_slew = max_slew_az * AZIM_RATIO
+    if (abs(targ_el - cur_el) > PROP_LIMIT):
+        el_slew = GEAR_SPIN_MAX
+    else:
+        el_slew = proportional_speed(abs(targ_el - cur_el), PROP_LIMIT)
     
     #
-    # Adjust az_slew/el_slew based on difference between target and current
+    # Compute for azimuth
     #
-    if (abs(targ_el-cur_el) <= 2.5):
-        el_slew = el_slew / 1.5
-    if (abs(targ_el-cur_el) <= 1.25):
-        el_slew = el_slew / 2.0
-    if (abs(targ_el-cur_el) <= 0.5):
-        el_slew = el_slew / 5.5
-
-    if (abs(targ_az-cur_az) <= 2.5):
-        az_slew = az_slew / 1.5
-    if (abs(targ_az-cur_az) <= 1.25):
-        az_slew = az_slew / 2.0
-    if (abs(targ_az_cur_az) <= 0.5):
-        az_slew = az_slew / 5.5
-
+    if (abs(targ_z - cur_az) > PROP_LIMIT):
+        az_slew = GEAR_SPIN_MAX
+    else:
+        az_slew = proportional_speed(abs(targ_az - cur_az), PROP_LIMIT)
     #
     # Adjust sign
     #
@@ -349,12 +361,12 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
             az_running = False
             
         #
-        # Wait 1.5 seconds between updates
+        # Wait 1.0 second between updates
         #
-        time.sleep(1.5)
+        time.sleep(1.0)
         
         #
-        # Hmm, despite there being a 2-second pause the relevant axis
+        # Hmm, despite there being a 1-second pause the relevant axis
         #   hasn't moved.  Declare some "weirdness"
         #
         if ((el_running == True) and (abs(cur_el-get_el_sensor()) < 0.025)):

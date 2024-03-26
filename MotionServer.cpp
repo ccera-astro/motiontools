@@ -23,7 +23,7 @@ void log_motor_data(int which, double speed, double torque)
     ltp = gmtime(&now);
     
     fp = fopen(MOTOR_LOG_FILE, "a");
-    fprintf (fp, "%04d%02d%02d,%02d%02d%02d,%d,%f,%f", ltp->tm_year, ltp->tm_mon+1, ltp->tm_mday,
+    fprintf (fp, "%04d%02d%02d,%02d%02d%02d,%d,%f,%f\n", ltp->tm_year+1900, ltp->tm_mon+1, ltp->tm_mday,
         ltp->tm_hour, ltp->tm_min, ltp->tm_sec,
         which, speed, torque);
     fclose(fp);
@@ -84,7 +84,7 @@ bool IsBusPowerLow(INode &theNode) {
 //sequential repeated moves on each axis.
 //*********************************************************************************
 
-#define ACC_LIM_RPM_PER_SEC 1800
+#define ACC_LIM_RPM_PER_SEC 2250
 #define VEL_LIM_RPM         1500  
 #define TIME_TILL_TIMEOUT   10000   //The timeout used for homing(ms)
 
