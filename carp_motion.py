@@ -261,6 +261,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
     #
     rv = True
     
+    
     #
     # Forever, until we zero-in on the target
     #
@@ -301,6 +302,12 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         axes = get_both_sensors()
         cur_el = axes[0]
         cur_az = axes[1]
+        if (cur_el < 0 or cur_el > 92):
+            limits = True
+            break
+        if (cur_az < 0 or cur_az > 360):
+            limits = True
+            break
         
         ltp = time.gmtime()
         lfp.write ("%02d,%02d,%02d,SLEW,%f,%f,%f,%f\n" % (ltp.tm_hour,
