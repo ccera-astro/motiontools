@@ -59,7 +59,7 @@ AZIMUTH_LIMITS = (1.0,359.0)
 
 #
 # Gear spin max
-GEAR_SPIN_MAX = 1500.0
+GEAR_SPIN_MAX = 1750.0
 
 #
 # An angular rate that is manageable by both axes
@@ -76,7 +76,7 @@ def set_az_speed(spd):
 
 def set_el_speed(spd):
     global rpc
-    return rpc.Move(0,spd*EL_SIGN)
+    return rpc.Move(0,spd*ELEV_SIGN)
     
 def query_el_torque():
     global rpc
@@ -194,7 +194,7 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
     #
     # Compute for azimuth
     #
-    if (abs(targ_z - cur_az) > PROP_LIMIT):
+    if (abs(targ_az - cur_az) > PROP_LIMIT):
         az_slew = GEAR_SPIN_MAX
     else:
         az_slew = proportional_speed(abs(targ_az - cur_az), PROP_LIMIT)
@@ -207,6 +207,10 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
         az_slew *= -1.0
 
     return ((el_slew,az_slew))
+#
+# Pause time between slewing-rate updates
+#
+PAUSE_TIME = 2.0
 
 #
 # Move dish to target
@@ -261,7 +265,6 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
     #
     rv = True
     
-    
     #
     # Forever, until we zero-in on the target
     #
@@ -284,6 +287,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
             v.compute(local)
             t_az = from_ephem_coord("%s" % v.az) + azoffset
             t_el = from_ephem_coord("%s" % v.alt) + eloffset
+            print ("Converging on AZ %f  EL %f" % (t_az, t_el))
         else:
             t_az = t_ra
             t_el = t_dec
@@ -302,10 +306,10 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         axes = get_both_sensors()
         cur_el = axes[0]
         cur_az = axes[1]
-        if (cur_el < 0 or cur_el > 92):
+        if (cur_el < 0.0 or cur_el > 91.0):
             limits = True
             break
-        if (cur_az < 0 or cur_az > 360):
+        if (cur_az < 1.0 or cur_az > 359.5):
             limits = True
             break
         
@@ -320,9 +324,9 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         #  "close" at the start, but if we stop, it will drift further
         #  away.
         #
-        if (abs(cur_el - t_el) > 0.15):
+        if (abs(cur_el - t_el) >= 0.20):
             el_running = True
-        if (abs(cur_az - t_az) > 0.15):
+        if (abs(cur_az - t_az) >= 0.20):
             az_running = True
             
         #
@@ -335,7 +339,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         # Update commanded motor speed if desired rate is different from
         #   current rate
         #
-        if ((el_running == True) and el_speed != slew_tuple[0]):
+        if ((slew_tuple[0] > 0.0) and (el_running == True) and (el_speed != slew_tuple[0])):
             el_speed = slew_tuple[0]
             r = set_el_speed(el_speed)
             if (r != 0):
@@ -343,7 +347,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
                 rv = False
                 break
                 
-        if ((az_running == True) and az_speed != slew_tuple[1]):
+        if ((slew_tuple[1] > 0.0) and (az_running == True) and (az_speed != slew_tuple[1])):
             az_speed = slew_tuple[1]
             r = set_az_speed(az_speed)
             if (r != 0):
@@ -368,22 +372,49 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
             az_running = False
             
         #
-        # Wait 1.0 second between updates
+        # Wait 2.0 second between updates
         #
-        time.sleep(1.0)
+        time.sleep(PAUSE_TIME)
         
         #
-        # Hmm, despite there being a 1-second pause the relevant axis
+        # Hmm, despite there being a 2-second pause the relevant axis
         #   hasn't moved.  Declare some "weirdness"
         #
-        if ((el_running == True) and (abs(cur_el-get_el_sensor()) < 0.025)):
-            weird_count += 1
+        new_positions = get_both_sensors()
+        new_el = new_positions[0]
+        new_az = new_positions[1]
+        
+        #
+        # Compute expected and actual ELEV axis motion
+        #
+        expected_el = (el_speed / ELEV_RATIO ) * 360.0
+        expected_el /= 60.0
+        expected_el_range = (expected_el * 0.3, expected_el * 1.5)
+        actual_el_motion = abs(new_el - cur_el) / PAUSE_TIME
 
-        if ((az_running == True) and (abs(cur_az-get_az_sensor()) < 0.025)):
+        #
+        # Compute expected and actual AZIM axis motion
+        #
+        expected_az = (az_speed / AZIM_RATIO ) * 360.0
+        expected_az /= 60.0
+        expected_az_range = (expected_az * 0.30, expected_az * 1.5)
+        actual_az_motion = abs(new_az - cur_az) / PAUSE_TIME
+        
+        #
+        # Is the actual ELEV speed somewhere in the rough range of expected speed?
+        #
+        if ((el_running == True) and (actual_el_motion <= expected_el_range[0] or
+            actual_el_motion >= expected_el_range[1])):
+            weird_count += 1
+        #
+        # Is the actual AZIM speed somewhere in the rough range of expected speed?
+        #
+        if ((az_running == True) and (actual_az_motion <= expected_az_range[0] or
+            actual_az_motion >= expected_az_range[1])):
             weird_count += 1
         
         if (weird_count >= 5):
-            print( "Axis not moving!!")
+            print( "Axis moving at unexpected rate: AZ %f EL %f" % (actual_az_motion, actual_el_motion))
             set_az_speed(0.0)
             set_el_speed(0.0)
             rv = False
@@ -778,7 +809,7 @@ def main():
     ts = "%04d%02d%02d%02d%02d" % (ltp.tm_year, ltp.tm_mon, ltp.tm_mday,
         ltp.tm_hour, ltp.tm_min)
 
-    fp = open("%s-motion.csv", "w" % ts)
+    fp = open("%s-motion.csv"  % ts ,  "w")
     fp.write("TARGET: %f %f\n" % (tra, tdec))
     fp.flush()
         

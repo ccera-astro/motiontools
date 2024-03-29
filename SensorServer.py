@@ -95,7 +95,7 @@ def device_loop(eloffs,azoffs):
         if (last_az < -20.0):
             last_az = current_az
             last_az_time = time.time()
-        time.sleep(0.05)
+        time.sleep(0.01)
 
         current_elev = get_el_sensor()
         current_elev = current_elev + eloffs
@@ -125,7 +125,7 @@ def device_loop(eloffs,azoffs):
         last_elev_time = time.time()
         last_az = current_az
         last_az_time = time.time()
-        time.sleep(0.250)
+        time.sleep(0.200)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--xmlport", type=int, required=True, help="XML Port")

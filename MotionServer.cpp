@@ -84,8 +84,8 @@ bool IsBusPowerLow(INode &theNode) {
 //sequential repeated moves on each axis.
 //*********************************************************************************
 
-#define ACC_LIM_RPM_PER_SEC 2250
-#define VEL_LIM_RPM         1500  
+#define ACC_LIM_RPM_PER_SEC 3500
+#define VEL_LIM_RPM         1750 
 #define TIME_TILL_TIMEOUT   10000   //The timeout used for homing(ms)
 
 
@@ -341,7 +341,7 @@ public:
         // can query this information with a system.methodSignature and
         // system.methodHelp RPC.
         this->_signature = "i:id";
-            // method's result and two arguments are integers
+            // method's result and two arguments are integer/float
         this->_help = "This method moves a motor through some number of degrees";
         this->Manager = myMgr;
     }
@@ -351,9 +351,9 @@ public:
         
         int rval = 0;
         int const which(paramList.getInt(0));
-        double const angle(paramList.getDouble(0));
+        double const angle(paramList.getDouble(1));
         
-        paramList.verifyEnd(1);
+        paramList.verifyEnd(2);
         
         IPort &myPort = Manager->Ports(0);
         int cnt = (int)myPort.NodeCount();

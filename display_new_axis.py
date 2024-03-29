@@ -91,7 +91,7 @@ parser.add_argument("--axis", type=str, help="Axis Label", default="Elev")
 parser.add_argument("--infile", type=str, help="Input file", default="/dev/null")
 parser.add_argument("--fontsize", type=int, help="Font Size", default=50)
 parser.add_argument("--xmlrpc", type=str, help="XMLRPC server", default=None)
-parser.add_argument("--pacing", type=float, help="Update pacing", default=0.5)
+parser.add_argument("--pacing", type=float, help="Update pacing", default=1.0)
 
 
 args = parser.parse_args()
