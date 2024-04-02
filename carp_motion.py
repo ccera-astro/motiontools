@@ -8,6 +8,9 @@ import time
 import xmlrpc.client as xml
 import argparse
 
+ENCODER_BITS=14
+ENCODER_RESOLUTION=360.0/(2**ENCODER_BITS)
+
 #
 # Establish some constants
 #
@@ -54,12 +57,12 @@ DEG_MINUTE = 0.25
 #
 # Soft limits for motion
 #
-ELEVATION_LIMITS = (1.5,90.0)
+ELEVATION_LIMITS = (0.5,91.5)
 AZIMUTH_LIMITS = (1.0,359.0)
 
 #
 # Gear spin max
-GEAR_SPIN_MAX = 1750.0
+GEAR_SPIN_MAX = 1600.0
 
 #
 # An angular rate that is manageable by both axes
@@ -158,10 +161,32 @@ def track_rate(declination):
 #
 # Return a speed proportional to difference between limit and actual
 #
+# We quantize to QUANTUM steps, to reduce the amount of needless changing of
+#  motor speed at our loop cadence.
+#
+QUANTUM=15
 def proportional_speed(pdiff,lim):
-    v1 = lim-x
-    v2 = GEAR_SPIN_MAX/(1+1.33*(v1*v1))
+    v1 = lim-pdiff
+    v2 = GEAR_SPIN_MAX/(1+1.35*(v1*v1))
+    v2 = int(int(v2/QUANTUM) * QUANTUM)
+    v2 = float(v2)
     return v2
+
+#
+# Degrees/second from RPM and ratio
+#
+def dps(rpm, ratio):
+    x = rpm / ratio
+    x *= 360.0
+    x /= 60.0
+    return x
+
+def dps_to_rpm(d, ratio):
+    x = 60.0 * d
+    x /= 360.0
+    x *= ratio
+    return x
+
 
 #
 # We start going into proportional control at this limit in offset between
@@ -190,14 +215,16 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
         el_slew = GEAR_SPIN_MAX
     else:
         el_slew = proportional_speed(abs(targ_el - cur_el), PROP_LIMIT)
-    
     #
     # Compute for azimuth
+    # Azimuth moves faster than elevation, so adjust the resulting curve
+    #  a bit.
     #
-    if (abs(targ_az - cur_az) > PROP_LIMIT):
+    if (abs(targ_az - cur_az) > PROP_LIMIT*1.5):
         az_slew = GEAR_SPIN_MAX
     else:
-        az_slew = proportional_speed(abs(targ_az - cur_az), PROP_LIMIT)
+        az_slew = proportional_speed(abs(targ_az - cur_az), PROP_LIMIT*1.5)
+            
     #
     # Adjust sign
     #
@@ -210,7 +237,7 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
 #
 # Pause time between slewing-rate updates
 #
-PAUSE_TIME = 2.0
+PAUSE_TIME = 1.0
 
 #
 # Move dish to target
@@ -324,9 +351,9 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         #  "close" at the start, but if we stop, it will drift further
         #  away.
         #
-        if (abs(cur_el - t_el) >= 0.20):
+        if (abs(cur_el - t_el) >= 0.15):
             el_running = True
-        if (abs(cur_az - t_az) >= 0.20):
+        if (abs(cur_az - t_az) >= 0.15):
             az_running = True
             
         #
@@ -339,7 +366,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         # Update commanded motor speed if desired rate is different from
         #   current rate
         #
-        if ((slew_tuple[0] > 0.0) and (el_running == True) and (el_speed != slew_tuple[0])):
+        if ((el_running == True) and (el_speed != slew_tuple[0])):
             el_speed = slew_tuple[0]
             r = set_el_speed(el_speed)
             if (r != 0):
@@ -347,7 +374,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
                 rv = False
                 break
                 
-        if ((slew_tuple[1] > 0.0) and (az_running == True) and (az_speed != slew_tuple[1])):
+        if ((az_running == True) and (az_speed != slew_tuple[1])):
             az_speed = slew_tuple[1]
             r = set_az_speed(az_speed)
             if (r != 0):
@@ -358,7 +385,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         #
         # We haved reached the object in elevation--zero speed
         #
-        if (abs(cur_el-t_el) <= 0.1):
+        if (abs(cur_el - t_el) <= 0.07):
             set_el_speed(0.0)
             el_speed = 0.0
             el_running = False
@@ -366,15 +393,22 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         #
         # We have reached the object in azimuth--zero speed
         #
-        if (abs(cur_az - t_az) <= 0.1):
+        if (abs(cur_az - t_az) <= 0.07):
             set_az_speed(0.0)
-            el_speed = 0.0
+            az_speed = 0.0
             az_running = False
             
         #
-        # Wait 2.0 second between updates
+        # Wait PAUSE_TIME second between updates
         #
-        time.sleep(PAUSE_TIME)
+        ptime = PAUSE_TIME
+        
+        if (dps(el_speed, ELEV_RATIO) < ENCODER_RESOLUTION*3.0):
+            ptime = PAUSE_TIME/2.0
+        if (dps(az_speed, AZIM_RATIO) < ENCODER_RESOLUTION*3.0):
+            ptime = PAUSE_TIME/2.0
+
+        time.sleep(ptime)
         
         #
         # Hmm, despite there being a 2-second pause the relevant axis
@@ -387,38 +421,63 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
         #
         # Compute expected and actual ELEV axis motion
         #
-        expected_el = (el_speed / ELEV_RATIO ) * 360.0
-        expected_el /= 60.0
-        expected_el_range = (expected_el * 0.3, expected_el * 1.5)
-        actual_el_motion = abs(new_el - cur_el) / PAUSE_TIME
+        expected_el = dps(el_speed, ELEV_RATIO)
+        expected_el_range = (expected_el * 0.30, expected_el * 3.0)
+        actual_el_motion = abs(new_el - cur_el) / ptime
 
         #
         # Compute expected and actual AZIM axis motion
         #
-        expected_az = (az_speed / AZIM_RATIO ) * 360.0
-        expected_az /= 60.0
-        expected_az_range = (expected_az * 0.30, expected_az * 1.5)
-        actual_az_motion = abs(new_az - cur_az) / PAUSE_TIME
+        expected_az = dps(az_speed, AZIM_RATIO)
+        expected_az_range = (expected_az * 0.3, expected_az * 3.0)
+        actual_az_motion = abs(new_az - cur_az) / ptime
         
         #
         # Is the actual ELEV speed somewhere in the rough range of expected speed?
         #
         if ((el_running == True) and (actual_el_motion <= expected_el_range[0] or
             actual_el_motion >= expected_el_range[1])):
-            weird_count += 1
+            #
+            # Special case--if we're moving really slow, the encoder may not have
+            #  updated in its lowest bit position.
+            #
+            if (actual_el_motion != 0.0):
+                print ("EL MOTION FAULT: actual %f range %f-%f commanded %f" % (actual_el_motion,
+                    expected_el_range[0], expected_el_range[1], dps(el_speed, ELEV_RATIO)))
+                rv = False
+                set_el_speed(0.0)
+                set_az_speed(0.0)
+                break
+            elif(dps(el_speed, ELEV_RATIO) > ENCODER_RESOLUTION*2.25):
+                print ("EL MOTION FAULT: encoder or motor system not moving")
+                set_el_speed(0.0)
+                set_az_speed(0.0)
+                rv = False
+                
         #
         # Is the actual AZIM speed somewhere in the rough range of expected speed?
         #
         if ((az_running == True) and (actual_az_motion <= expected_az_range[0] or
             actual_az_motion >= expected_az_range[1])):
-            weird_count += 1
+            
+            #
+            # Special case here -- if the actual motion is 0.0, it's probably because
+            #   we're moving at a rate that is too slow to see an update.
+            #
+            if (actual_az_motion != 0.0):
+                print ("AZ MOTION FAULT: actual %f range %f-%f commanded %f" % (actual_az_motion,
+                    expected_az_range[0], expected_az_range[1], dps(az_speed, AZIM_RATIO)))
+                set_el_speed(0.0)
+                set_az_speed(0.0)
+                rv = False
+                break
+            elif (dps(az_speed, AZIM_RATIO) > ENCODER_RESOLUTION*2.25):
+                print ("AZ MOTION FAULT: encoder or motor system not moving")
+                set_el_speed(0.0)
+                set_az_speed(0.0)
+                rv = False
+                break
         
-        if (weird_count >= 5):
-            print( "Axis moving at unexpected rate: AZ %f EL %f" % (actual_az_motion, actual_el_motion))
-            set_az_speed(0.0)
-            set_el_speed(0.0)
-            rv = False
-            break
     #
     # No matter how we exit from this loop, make sure things are "safe"
     #

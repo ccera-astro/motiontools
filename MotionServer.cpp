@@ -440,8 +440,20 @@ public:
         
         int rval = 0;
         
+        IPort &myPort = Manager->Ports(0);
+        INode &myNode = myPort.Nodes(0);
+        INode &myNode2 = myPort.Nodes(1);
+        myPort.BrakeControl.BrakeSetting(0, BRAKE_PREVENT_MOTION);
+        myPort.BrakeControl.BrakeSetting(1, BRAKE_PREVENT_MOTION);
+        sleep(2);
+
+        myNode.EnableReq(false);
+        sleep(1);
+        myNode2.EnableReq(false);
+        sleep(1);
+
         Manager->PortsClose();
-        alarm(5);
+        alarm(2);
         *retvalP = xmlrpc_c::value_int(rval);
     }
 };
