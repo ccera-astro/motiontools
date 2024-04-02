@@ -22,7 +22,7 @@ options:
     run_options: prompt
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: CARP Dish Controller
+    title: CARP Observatory Manual Control
     window_size: (1000,1000)
   states:
     bus_sink: false
@@ -198,7 +198,7 @@ blocks:
     comment: ''
     function_args: ''
     function_name: level
-    poll_rate: '0.5'
+    poll_rate: '2.0'
     value: '0'
   states:
     bus_sink: false
@@ -216,7 +216,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [848, 396.0]
+    coordinate: [808, 180.0]
     rotation: 0
     state: true
 - name: samp_rate
@@ -237,9 +237,9 @@ blocks:
     comment: ''
     formatter: None
     gui_hint: ''
-    label: POSITIONS
+    label: ELEVATION
     type: string
-    value: '"EL %5.2f AZ %5.2f" % (posns[0], posns[1])'
+    value: '"%5.2f" % posns[0]'
   states:
     bus_sink: false
     bus_source: false
@@ -247,41 +247,59 @@ blocks:
     coordinate: [768, 76.0]
     rotation: 0
     state: true
-- name: analog_fastnoise_source_x_0
-  id: analog_fastnoise_source_x
+- name: variable_qtgui_label_0_0
+  id: variable_qtgui_label
+  parameters:
+    comment: ''
+    formatter: None
+    gui_hint: ''
+    label: AZIMUTH
+    type: string
+    value: '"%5.2f" % posns[1]'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [936, 76.0]
+    rotation: 0
+    state: true
+- name: analog_sig_source_x_0
+  id: analog_sig_source_x
   parameters:
     affinity: ''
     alias: ''
     amp: '1'
     comment: ''
+    freq: '1000'
     maxoutbuf: '0'
     minoutbuf: '0'
-    noise_type: analog.GR_GAUSSIAN
-    samples: '8192'
-    seed: '0'
-    type: complex
+    offset: '0'
+    phase: '0'
+    samp_rate: samp_rate
+    type: float
+    waveform: analog.GR_CONST_WAVE
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [136, 380.0]
+    coordinate: [40, 396.0]
     rotation: 0
     state: true
-- name: blocks_null_sink_0
-  id: blocks_null_sink
+- name: blocks_message_strobe_0
+  id: blocks_message_strobe
   parameters:
     affinity: ''
     alias: ''
-    bus_structure_sink: '[[0,],]'
     comment: ''
-    num_inputs: '1'
-    type: complex
-    vlen: '1'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    msg: 'pmt.cons(pmt.to_pmt({"az": posns[1], "el": posns[0]}),pmt.to_pmt(None))'
+    period: '250'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [568, 420.0]
+    coordinate: [592, 436.0]
     rotation: 0
     state: true
 - name: blocks_throttle_0
@@ -294,7 +312,7 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     samples_per_second: samp_rate
-    type: complex
+    type: float
     vlen: '1'
   states:
     bus_sink: false
@@ -349,7 +367,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    type: complex
+    type: float
   states:
     bus_sink: false
     bus_source: false
@@ -357,10 +375,25 @@ blocks:
     coordinate: [728, 356.0]
     rotation: 0
     state: true
+- name: variable_qtgui_azelplot_0
+  id: variable_qtgui_azelplot
+  parameters:
+    backgroundColor: white
+    comment: ''
+    dotColor: ro
+    gui_hint: ''
+    label: TELESCOPE POSITION
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [880, 420.0]
+    rotation: 0
+    state: true
 
 connections:
-- [analog_fastnoise_source_x_0, '0', blocks_throttle_0, '0']
-- [blocks_throttle_0, '0', blocks_null_sink_0, '0']
+- [analog_sig_source_x_0, '0', blocks_throttle_0, '0']
+- [blocks_message_strobe_0, strobe, variable_qtgui_azelplot_0, azel]
 - [blocks_throttle_0, '0', pacer_probe, '0']
 
 metadata:
