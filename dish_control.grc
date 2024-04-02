@@ -1,0 +1,367 @@
+options:
+  parameters:
+    author: ''
+    catch_exceptions: 'True'
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: qt_gui
+    hier_block_src_path: '.:'
+    id: dish_control
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: CARP Dish Controller
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: az_speed
+  id: variable_qtgui_range
+  parameters:
+    comment: ''
+    gui_hint: 1,2,1,1
+    label: AZIM SPEED
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '50'
+    step: '25'
+    stop: '500'
+    value: '50'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [448, 236.0]
+    rotation: 0
+    state: true
+- name: azim_east
+  id: variable_qtgui_push_button
+  parameters:
+    comment: ''
+    gui_hint: 1,1,1,1
+    label: EAST
+    pressed: '1'
+    released: '0'
+    type: int
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [232, 252.0]
+    rotation: 0
+    state: true
+- name: azim_west
+  id: variable_qtgui_push_button
+  parameters:
+    comment: ''
+    gui_hint: 1,0,1,1
+    label: WEST
+    pressed: '1'
+    released: '0'
+    type: int
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [232, 124.0]
+    rotation: 0
+    state: true
+- name: azim_west_status_0_0
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.azim_west(azim_west,az_speed)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [592, 172.0]
+    rotation: 0
+    state: true
+- name: azim_west_status_0_0_0
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.azim_east(azim_east,az_speed)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [592, 236.0]
+    rotation: 0
+    state: true
+- name: el_speed
+  id: variable_qtgui_range
+  parameters:
+    comment: ''
+    gui_hint: 0,2,1,1
+    label: ELEV SPEED
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '50'
+    step: '25'
+    stop: '500'
+    value: '50'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [456, 92.0]
+    rotation: 0
+    state: true
+- name: elev_dn_status_0
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.elev_down(elev_down,el_speed)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [600, 108.0]
+    rotation: 0
+    state: true
+- name: elev_down
+  id: variable_qtgui_push_button
+  parameters:
+    comment: ''
+    gui_hint: 0,1,1,1
+    label: DOWN
+    pressed: '1'
+    released: '0'
+    type: int
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [48, 244.0]
+    rotation: 0
+    state: true
+- name: elev_up
+  id: variable_qtgui_push_button
+  parameters:
+    comment: ''
+    gui_hint: 0,0,1,1
+    label: UP
+    pressed: '1'
+    released: '0'
+    type: int
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [48, 132.0]
+    rotation: 0
+    state: true
+- name: elev_up_status
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.elev_up(elev_up,el_speed)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [608, 36.0]
+    rotation: 0
+    state: true
+- name: pacer
+  id: variable_function_probe
+  parameters:
+    block_id: pacer_probe
+    comment: ''
+    function_args: ''
+    function_name: level
+    poll_rate: '0.5'
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [800, 252.0]
+    rotation: 0
+    state: true
+- name: posns
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.get_posns(pacer)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [848, 396.0]
+    rotation: 0
+    state: true
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: '16000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [184, 12]
+    rotation: 0
+    state: enabled
+- name: variable_qtgui_label_0
+  id: variable_qtgui_label
+  parameters:
+    comment: ''
+    formatter: None
+    gui_hint: ''
+    label: POSITIONS
+    type: string
+    value: '"EL %5.2f AZ %5.2f" % (posns[0], posns[1])'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [768, 76.0]
+    rotation: 0
+    state: true
+- name: analog_fastnoise_source_x_0
+  id: analog_fastnoise_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    amp: '1'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    noise_type: analog.GR_GAUSSIAN
+    samples: '8192'
+    seed: '0'
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [136, 380.0]
+    rotation: 0
+    state: true
+- name: blocks_null_sink_0
+  id: blocks_null_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    bus_structure_sink: '[[0,],]'
+    comment: ''
+    num_inputs: '1'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [568, 420.0]
+    rotation: 0
+    state: true
+- name: blocks_throttle_0
+  id: blocks_throttle
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    ignoretag: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_second: samp_rate
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [376, 412.0]
+    rotation: 0
+    state: true
+- name: dish_funcs
+  id: epy_module
+  parameters:
+    alias: ''
+    comment: ''
+    source_code: "# this module will be imported in the into your flowgraph\nimport\
+      \ time\nimport numpy\nimport os\nimport sys\nimport xmlrpc.client as xml\n\n\
+      RPC = None\nRPC2 = None\n\ndef init_RPC():\n    global RPC\n    global RPC2\n\
+      \    if (RPC == None):\n        try:\n            RPC = xml.ServerProxy(\"http://localhost:36036\"\
+      )\n        except:\n            RPC = None\n    if (RPC2 == None):\n       \
+      \ try:\n            RPC2 = xml.ServerProxy(\"http://localhost:9090\")\n    \
+      \    except:\n            RPC2 = None\n\ndef tryMove(lbl, ax,spd):\n    try:\n\
+      \        RPC.Move(ax,spd)\n    except:\n        pass\n\nupstate = 0\ndef elev_up(up,speed):\n\
+      \    global RPC\n    global upstate\n\n    init_RPC()\n    if (RPC != None):\n\
+      \        if (upstate != up):\n            upstate = up\n            if (up ==\
+      \ 1):\n                tryMove(\"Up\", 0,speed)\n            if (up == 0):\n\
+      \                tryMove(\"Up\", 0,0.0)\n            \ndownstate = 0       \
+      \   \ndef elev_down(down,speed):\n    global RPC\n    global downstate\n\n \
+      \   init_RPC()\n    if (RPC != None):\n        if (down != downstate):\n   \
+      \         downstate = down\n            if (down == 1):\n                tryMove(\"\
+      Down\", 0,-1.0*speed)\n            if (down == 0):\n                tryMove(\"\
+      Down\", 0,0.0)\nweststate = 0               \ndef azim_west(west,speed):\n \
+      \   global RPC\n    global weststate\n    init_RPC()\n    if (RPC != None):\n\
+      \        if (weststate != west):\n            weststate = west\n           \
+      \ if (west == 1):\n                tryMove(\"West\", 1, speed)\n           \
+      \ if (west == 0):\n                tryMove(\"West\", 1, 0.0)\neaststate = 0\n\
+      def azim_east(east,speed):\n    global RPC\n    global eaststate\n    init_RPC()\n\
+      \    if (RPC != None):\n        if (eaststate != east):\n            eaststate\
+      \ = east\n            if (east == 1):\n                tryMove(\"East\", 1,\
+      \ -1.0*speed)\n            if (east == 0):\n                tryMove(\"East\"\
+      , 1, 0.0)\n\ndef get_posns(pacer):\n    global RPC2\n    init_RPC()\n    try:\n\
+      \        posns = RPC2.get_both_axes()\n    except:\n        posns = (-1000,\
+      \ -1000)\n    return(posns)\n"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [456, 36.0]
+    rotation: 0
+    state: true
+- name: pacer_probe
+  id: blocks_probe_signal_x
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [728, 356.0]
+    rotation: 0
+    state: true
+
+connections:
+- [analog_fastnoise_source_x_0, '0', blocks_throttle_0, '0']
+- [blocks_throttle_0, '0', blocks_null_sink_0, '0']
+- [blocks_throttle_0, '0', pacer_probe, '0']
+
+metadata:
+  file_format: 1
