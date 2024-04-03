@@ -8,20 +8,19 @@ import xmlrpc.client as xml
 RPC = None
 RPC2 = None
 
-def init_RPC():
+def init_RPC(srvr):
     global RPC
-    global RPC2
     if (RPC == None):
         try:
-            RPC = xml.ServerProxy("http://localhost:36036")
+            RPC = xml.ServerProxy(srvr)
         except:
             RPC = None
-    if (RPC2 == None):
-        try:
-            RPC2 = xml.ServerProxy("http://localhost:9090")
-        except:
-            RPC2 = None
 
+def init_RPC2(srvr):
+	global RPC2
+	if (RPC2 == None):
+		RPC2 = xml.ServerProxy(srvr)
+	
 def tryMove(lbl, ax,spd):
     try:
         RPC.Move(ax,spd)
@@ -29,11 +28,11 @@ def tryMove(lbl, ax,spd):
         pass
 
 upstate = 0
-def elev_up(up,speed):
+def elev_up(up,speed,srvr):
     global RPC
     global upstate
 
-    init_RPC()
+    init_RPC(srvr)
     if (RPC != None):
         if (upstate != up):
             upstate = up
@@ -43,11 +42,11 @@ def elev_up(up,speed):
                 tryMove("Up", 0,0.0)
             
 downstate = 0          
-def elev_down(down,speed):
+def elev_down(down,speed,srvr):
     global RPC
     global downstate
 
-    init_RPC()
+    init_RPC(srvr)
     if (RPC != None):
         if (down != downstate):
             downstate = down
@@ -56,10 +55,10 @@ def elev_down(down,speed):
             if (down == 0):
                 tryMove("Down", 0,0.0)
 weststate = 0               
-def azim_west(west,speed):
+def azim_west(west,speed,srvr):
     global RPC
     global weststate
-    init_RPC()
+    init_RPC(srvr)
     if (RPC != None):
         if (weststate != west):
             weststate = west
@@ -68,10 +67,10 @@ def azim_west(west,speed):
             if (west == 0):
                 tryMove("West", 1, 0.0)
 eaststate = 0
-def azim_east(east,speed):
+def azim_east(east,speed,srvr):
     global RPC
     global eaststate
-    init_RPC()
+    init_RPC(srvr)
     if (RPC != None):
         if (eaststate != east):
             eaststate = east
@@ -80,9 +79,9 @@ def azim_east(east,speed):
             if (east == 0):
                 tryMove("East", 1, 0.0)
 
-def get_posns(pacer):
+def get_posns(pacer,srvr):
     global RPC2
-    init_RPC()
+    init_RPC2(srvr)
     try:
         posns = RPC2.get_both_axes()
     except:

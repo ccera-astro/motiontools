@@ -119,16 +119,16 @@ def get_both_sensors():
 # Take a decimal-degrees coordinate, and transform to the HH:MM:SS
 #   that ephem uses
 #
+from datetime import timedelta
 def to_ephem_coord(decimal):
-    longstr = "%02d" % int(decimal)
-    longstr = longstr + ":"
-    decimal = abs(decimal)
-    frac = decimal - int(decimal)
-    frac *= 60
-    mins = int(frac)
-    longstr += "%02d" % mins
-    longstr += ":00"
-    return longstr
+    secs = abs(decimal * 3600)
+    hours = int(secs/3600.0)
+    mins = int((secs - hours*3600)/60.0)
+    secs = secs-int((hours * 3600)+(mins*60))
+    if (decimal < 0.0):
+        hours *= -1
+    convstr = "%02d:%02d:%02d" % (hours, mins, secs)
+    return convstr
 
 #
 # Take an HH:MM:SS coordinate from ephem, and turn into decimal degrees
@@ -250,7 +250,7 @@ PAUSE_TIME = 1.0
 #
 # Returns: True for success False otherwise
 #
-def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
+def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, posonly):
 
     #
     # Prime ephem to know about our location and time
@@ -314,6 +314,11 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
             v.compute(local)
             t_az = from_ephem_coord("%s" % v.az) + azoffset
             t_el = from_ephem_coord("%s" % v.alt) + eloffset
+            if (posonly):
+                print ("AZ: %f EL %f for equatorial coordinate: RA %f DEC %f" %
+                    (t_az, t_el, t_ra, t_dec))
+                rv = False
+                break
             print ("Converging on AZ %f  EL %f" % (t_az, t_el))
         else:
             t_az = t_ra
@@ -481,8 +486,9 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute):
     #
     # No matter how we exit from this loop, make sure things are "safe"
     #
-    set_az_speed(0.0)
-    set_el_speed(0.0)
+    if (posonly == False):
+        set_az_speed(0.0)
+        set_el_speed(0.0)
     
     if (limits == True):
         print ("At least one axis limit exceeded--not proceeding")
@@ -804,8 +810,8 @@ def main():
     parser.add_argument ("--ra", type=float, default=None, help="RA of object")
     parser.add_argument ("--dec", type=float, default=None, help="DEC of object")
     parser.add_argument ("--tracking", type=float, default=0.0, help="How long to track")
-    parser.add_argument ("--lat", type=float, default=45.3497, help="Local latitude")
-    parser.add_argument ("--lon", type=float, default=-76.0559, help="Local longitude")
+    parser.add_argument ("--lat", type=float, default=45.3491, help="Local latitude")
+    parser.add_argument ("--lon", type=float, default=-76.0413, help="Local longitude")
     parser.add_argument ("--elev", type=float, default=96.0, help="Local elevation (m)")
     parser.add_argument ("--planet", type=str, default=None, help="Planetary body")
     parser.add_argument ("--motorproxy", type=str, default="http://localhost:36036",
@@ -815,6 +821,7 @@ def main():
     parser.add_argument ("--azoffset", type=float, default=0.0, help="Azimuth offset")
     parser.add_argument ("--eloffset", type=float, default=0.0, help="Elevation offset")
     parser.add_argument ("--absolute", action="store_true", default=False, help="Absolute position mode")
+    parser.add_argument ("--posonly", action="store_true", default=False, help="Just give me the coordinates")
     args = parser.parse_args()
     
     #
@@ -864,6 +871,11 @@ def main():
         #
         tra = float(ra.hours)
         tdec = float(dec.degrees)
+        if (args.posonly):
+            print ("Position for object %s is RA: %f DEC: %f" %
+                (args.planet, tra, tdec))
+            return (True)
+
     ltp = time.gmtime()
     ts = "%04d%02d%02d%02d%02d" % (ltp.tm_year, ltp.tm_mon, ltp.tm_mday,
         ltp.tm_hour, ltp.tm_min)
@@ -872,7 +884,7 @@ def main():
     fp.write("TARGET: %f %f\n" % (tra, tdec))
     fp.flush()
         
-    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset, fp, args.absolute) != True):
+    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset, fp, args.absolute, args.posonly) != True):
         print ("Problem encountered--exiting prior to tracking")
         exit(1)
     

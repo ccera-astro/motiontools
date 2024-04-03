@@ -15,7 +15,7 @@ options:
     max_nouts: '0'
     output_language: python
     placement: (0,0)
-    qt_qss_theme: ''
+    qt_qss_theme: /home/mleech/dish_ctl.qss
     realtime_scheduling: ''
     run: 'True'
     run_command: '{python} -u {filename}'
@@ -37,14 +37,14 @@ blocks:
   id: variable_qtgui_range
   parameters:
     comment: ''
-    gui_hint: 1,2,1,1
+    gui_hint: 1,2,1,2
     label: AZIM SPEED
     min_len: '200'
     orient: QtCore.Qt.Horizontal
     rangeType: float
-    start: '50'
-    step: '25'
-    stop: '500'
+    start: '0'
+    step: '50'
+    stop: '1200'
     value: '50'
     widget: counter_slider
   states:
@@ -71,6 +71,18 @@ blocks:
     coordinate: [232, 252.0]
     rotation: 0
     state: true
+- name: azim_east_status
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.azim_east(azim_east,az_speed,motor_xml)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [592, 236.0]
+    rotation: 0
+    state: true
 - name: azim_west
   id: variable_qtgui_push_button
   parameters:
@@ -88,11 +100,11 @@ blocks:
     coordinate: [232, 124.0]
     rotation: 0
     state: true
-- name: azim_west_status_0_0
+- name: azim_west_status
   id: variable
   parameters:
     comment: ''
-    value: dish_funcs.azim_west(azim_west,az_speed)
+    value: dish_funcs.azim_west(azim_west,az_speed,motor_xml)
   states:
     bus_sink: false
     bus_source: false
@@ -100,30 +112,18 @@ blocks:
     coordinate: [592, 172.0]
     rotation: 0
     state: true
-- name: azim_west_status_0_0_0
-  id: variable
-  parameters:
-    comment: ''
-    value: dish_funcs.azim_east(azim_east,az_speed)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [592, 236.0]
-    rotation: 0
-    state: true
 - name: el_speed
   id: variable_qtgui_range
   parameters:
     comment: ''
-    gui_hint: 0,2,1,1
+    gui_hint: 0,2,1,2
     label: ELEV SPEED
     min_len: '200'
     orient: QtCore.Qt.Horizontal
     rangeType: float
-    start: '50'
-    step: '25'
-    stop: '500'
+    start: '0'
+    step: '50'
+    stop: '1200'
     value: '50'
     widget: counter_slider
   states:
@@ -133,11 +133,11 @@ blocks:
     coordinate: [456, 92.0]
     rotation: 0
     state: true
-- name: elev_dn_status_0
+- name: elev_dn_status
   id: variable
   parameters:
     comment: ''
-    value: dish_funcs.elev_down(elev_down,el_speed)
+    value: dish_funcs.elev_down(elev_down,el_speed,motor_xml)
   states:
     bus_sink: false
     bus_source: false
@@ -183,7 +183,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: dish_funcs.elev_up(elev_up,el_speed)
+    value: dish_funcs.elev_up(elev_up,el_speed,motor_xml)
   states:
     bus_sink: false
     bus_source: false
@@ -198,7 +198,7 @@ blocks:
     comment: ''
     function_args: ''
     function_name: level
-    poll_rate: '2.0'
+    poll_rate: 1.0/scadence
     value: '0'
   states:
     bus_sink: false
@@ -211,7 +211,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: dish_funcs.get_posns(pacer)
+    value: dish_funcs.get_posns(pacer,sensor_xml)
   states:
     bus_sink: false
     bus_source: false
@@ -236,8 +236,8 @@ blocks:
   parameters:
     comment: ''
     formatter: None
-    gui_hint: ''
-    label: ELEVATION
+    gui_hint: 2,0,1,1
+    label: 'ELEVATION:'
     type: string
     value: '"%5.2f" % posns[0]'
   states:
@@ -252,8 +252,8 @@ blocks:
   parameters:
     comment: ''
     formatter: None
-    gui_hint: ''
-    label: AZIMUTH
+    gui_hint: 2,2,1,1
+    label: 'AZIMUTH:'
     type: string
     value: '"%5.2f" % posns[1]'
   states:
@@ -328,37 +328,53 @@ blocks:
     comment: ''
     source_code: "# this module will be imported in the into your flowgraph\nimport\
       \ time\nimport numpy\nimport os\nimport sys\nimport xmlrpc.client as xml\n\n\
-      RPC = None\nRPC2 = None\n\ndef init_RPC():\n    global RPC\n    global RPC2\n\
-      \    if (RPC == None):\n        try:\n            RPC = xml.ServerProxy(\"http://localhost:36036\"\
-      )\n        except:\n            RPC = None\n    if (RPC2 == None):\n       \
-      \ try:\n            RPC2 = xml.ServerProxy(\"http://localhost:9090\")\n    \
-      \    except:\n            RPC2 = None\n\ndef tryMove(lbl, ax,spd):\n    try:\n\
-      \        RPC.Move(ax,spd)\n    except:\n        pass\n\nupstate = 0\ndef elev_up(up,speed):\n\
-      \    global RPC\n    global upstate\n\n    init_RPC()\n    if (RPC != None):\n\
-      \        if (upstate != up):\n            upstate = up\n            if (up ==\
-      \ 1):\n                tryMove(\"Up\", 0,speed)\n            if (up == 0):\n\
-      \                tryMove(\"Up\", 0,0.0)\n            \ndownstate = 0       \
-      \   \ndef elev_down(down,speed):\n    global RPC\n    global downstate\n\n \
-      \   init_RPC()\n    if (RPC != None):\n        if (down != downstate):\n   \
-      \         downstate = down\n            if (down == 1):\n                tryMove(\"\
-      Down\", 0,-1.0*speed)\n            if (down == 0):\n                tryMove(\"\
-      Down\", 0,0.0)\nweststate = 0               \ndef azim_west(west,speed):\n \
-      \   global RPC\n    global weststate\n    init_RPC()\n    if (RPC != None):\n\
-      \        if (weststate != west):\n            weststate = west\n           \
-      \ if (west == 1):\n                tryMove(\"West\", 1, speed)\n           \
-      \ if (west == 0):\n                tryMove(\"West\", 1, 0.0)\neaststate = 0\n\
-      def azim_east(east,speed):\n    global RPC\n    global eaststate\n    init_RPC()\n\
-      \    if (RPC != None):\n        if (eaststate != east):\n            eaststate\
-      \ = east\n            if (east == 1):\n                tryMove(\"East\", 1,\
-      \ -1.0*speed)\n            if (east == 0):\n                tryMove(\"East\"\
-      , 1, 0.0)\n\ndef get_posns(pacer):\n    global RPC2\n    init_RPC()\n    try:\n\
-      \        posns = RPC2.get_both_axes()\n    except:\n        posns = (-1000,\
-      \ -1000)\n    return(posns)\n"
+      RPC = None\nRPC2 = None\n\ndef init_RPC(srvr):\n    global RPC\n    if (RPC\
+      \ == None):\n        try:\n            RPC = xml.ServerProxy(srvr)\n       \
+      \ except:\n            RPC = None\n\ndef init_RPC2(srvr):\n\tglobal RPC2\n\t\
+      if (RPC2 == None):\n\t\tRPC2 = xml.ServerProxy(srvr)\n\t\ndef tryMove(lbl, ax,spd):\n\
+      \    try:\n        RPC.Move(ax,spd)\n    except:\n        pass\n\nupstate =\
+      \ 0\ndef elev_up(up,speed,srvr):\n    global RPC\n    global upstate\n\n   \
+      \ init_RPC(srvr)\n    if (RPC != None):\n        if (upstate != up):\n     \
+      \       upstate = up\n            if (up == 1):\n                tryMove(\"\
+      Up\", 0,speed)\n            if (up == 0):\n                tryMove(\"Up\", 0,0.0)\n\
+      \            \ndownstate = 0          \ndef elev_down(down,speed,srvr):\n  \
+      \  global RPC\n    global downstate\n\n    init_RPC(srvr)\n    if (RPC != None):\n\
+      \        if (down != downstate):\n            downstate = down\n           \
+      \ if (down == 1):\n                tryMove(\"Down\", 0,-1.0*speed)\n       \
+      \     if (down == 0):\n                tryMove(\"Down\", 0,0.0)\nweststate =\
+      \ 0               \ndef azim_west(west,speed,srvr):\n    global RPC\n    global\
+      \ weststate\n    init_RPC(srvr)\n    if (RPC != None):\n        if (weststate\
+      \ != west):\n            weststate = west\n            if (west == 1):\n   \
+      \             tryMove(\"West\", 1, speed)\n            if (west == 0):\n   \
+      \             tryMove(\"West\", 1, 0.0)\neaststate = 0\ndef azim_east(east,speed,srvr):\n\
+      \    global RPC\n    global eaststate\n    init_RPC(srvr)\n    if (RPC != None):\n\
+      \        if (eaststate != east):\n            eaststate = east\n           \
+      \ if (east == 1):\n                tryMove(\"East\", 1, -1.0*speed)\n      \
+      \      if (east == 0):\n                tryMove(\"East\", 1, 0.0)\n\ndef get_posns(pacer,srvr):\n\
+      \    global RPC2\n    init_RPC2(srvr)\n    try:\n        posns = RPC2.get_both_axes()\n\
+      \    except:\n        posns = (-1000, -1000)\n    return(posns)\n"
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate: [456, 36.0]
+    rotation: 0
+    state: true
+- name: motor_xml
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: URL for motor server
+    short_id: ''
+    type: str
+    value: '"http://localhost:36036"'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [200, 596.0]
     rotation: 0
     state: true
 - name: pacer_probe
@@ -373,6 +389,40 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [728, 356.0]
+    rotation: 0
+    state: true
+- name: scadence
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: Cadence of sensor query, in seconds
+    short_id: ''
+    type: eng_float
+    value: '1.0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [552, 596.0]
+    rotation: 0
+    state: true
+- name: sensor_xml
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: URL for sensor server
+    short_id: ''
+    type: str
+    value: '"http://localhost:9090"'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [384, 596.0]
     rotation: 0
     state: true
 - name: variable_qtgui_azelplot_0
