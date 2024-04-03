@@ -148,6 +148,32 @@ def from_ephem_coord(coord):
     return (decimal)
 
 #
+# Given longitude(decimal degrees as a float)
+#
+# Return the current sidereal time as a string with
+#  "," separated tokens
+#
+def cur_sidereal(longitude):
+    longstr = "%02d" % int(longitude)
+    longstr = longstr + ":"
+    longitude = abs(longitude)
+    frac = longitude - int(longitude)
+    frac *= 60
+    mins = int(frac)
+    longstr += "%02d" % mins
+    longstr += ":00"
+    x = ephem.Observer()
+    x.date = ephem.now()
+    x.long = longstr
+    jdate = ephem.julian_date(x)
+    tokens=str(x.sidereal_time()).split(":")
+    hours=int(tokens[0])
+    minutes=int(tokens[1])
+    seconds=int(float(tokens[2]))
+    sidt = "%02d,%02d,%02d" % (hours, minutes, seconds)
+    return (sidt)
+    
+#
 # Determine initial tracking rate--measurements will alter this
 #  dynamically
 #
@@ -315,6 +341,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
             t_az = from_ephem_coord("%s" % v.az) + azoffset
             t_el = from_ephem_coord("%s" % v.alt) + eloffset
             if (posonly):
+                print ("Current LMST: %s"  % cur_sidereal(lon).replace(",", ":"))
                 print ("AZ: %f EL %f for equatorial coordinate: RA %f DEC %f" %
                     (t_az, t_el, t_ra, t_dec))
                 rv = False
