@@ -119,7 +119,6 @@ def get_both_sensors():
 # Take a decimal-degrees coordinate, and transform to the HH:MM:SS
 #   that ephem uses
 #
-from datetime import timedelta
 def to_ephem_coord(decimal):
     secs = abs(decimal * 3600)
     hours = int(secs/3600.0)
@@ -128,12 +127,14 @@ def to_ephem_coord(decimal):
     if (decimal < 0.0):
         hours *= -1
     convstr = "%02d:%02d:%02d" % (hours, mins, secs)
+    #print ("conversion %s" % convstr)
     return convstr
 
 #
 # Take an HH:MM:SS coordinate from ephem, and turn into decimal degrees
 #
 def from_ephem_coord(coord):
+    #print ("COnverting from ephem to decimal %s" % coord)
     q = coord.split(":")
     degs = float(q[0])
     mins = float(q[1])
@@ -153,20 +154,17 @@ def from_ephem_coord(coord):
 # Return the current sidereal time as a string with
 #  "," separated tokens
 #
-def cur_sidereal(longitude):
-    longstr = "%02d" % int(longitude)
-    longstr = longstr + ":"
-    longitude = abs(longitude)
-    frac = longitude - int(longitude)
-    frac *= 60
-    mins = int(frac)
-    longstr += "%02d" % mins
-    longstr += ":00"
+def cur_sidereal(longitude,latitude):
+    longstr = to_ephem_coord(longitude)
+    latstr = to_ephem_coord(latitude)
     x = ephem.Observer()
     x.date = ephem.now()
     x.long = longstr
-    jdate = ephem.julian_date(x)
+    x.lat = latstr
+    #print ("x is %s" % str(x))
+    #jdate = ephem.julian_date(x)
     tokens=str(x.sidereal_time()).split(":")
+    #print("sid time %s" % x.sidereal_time())
     hours=int(tokens[0])
     minutes=int(tokens[1])
     seconds=int(float(tokens[2]))
@@ -282,10 +280,11 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     # Prime ephem to know about our location and time
     #
     local = ephem.Observer()
-    local.lat = to_ephem_coord(lat)
-    local.lon = to_ephem_coord(lon)
+    local.lat = str(lat)#to_ephem_coord(lat)
+    local.long = str(lon)#to_ephem_coord(lon)
     local.elevation = elev
     local.pressure = 0
+    local.epoch = ephem.J2000
     
     #
     # Do intial compute on the target
@@ -293,8 +292,17 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     #
     local.date = ephem.now()
     v = ephem.FixedBody()
-    v._ra = to_ephem_coord(t_ra)
-    v._dec = to_ephem_coord(t_dec)
+    e = ephem.Equatorial(to_ephem_coord(t_ra), to_ephem_coord(t_dec))
+    v._ra = e.ra
+    v._dec = e.dec
+    v._epoch = ephem.J2000
+    v.compute(local)
+    #print ("_RA %s _DEC %s" % (v._ra, v._dec))
+    #print ("G_RA %s G_DEC %s" % (v.g_ra, v.g_dec))
+    #print ("A_RA %s A_DEC %s" % (v.a_ra, v.a_dec))
+    #print ("RA %s DEC %s" % (v.ra ,v.dec))
+    #print (str(v))
+    #print (str(local))
     
     #
     # Keep track of current speed
@@ -341,7 +349,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
             t_az = from_ephem_coord("%s" % v.az) + azoffset
             t_el = from_ephem_coord("%s" % v.alt) + eloffset
             if (posonly):
-                print ("Current LMST: %s"  % cur_sidereal(lon).replace(",", ":"))
+                print ("Current LMST: %s"  % cur_sidereal(lon,lat).replace(",", ":"))
                 print ("AZ: %f EL %f for equatorial coordinate: RA %f DEC %f" %
                     (t_az, t_el, t_ra, t_dec))
                 rv = False
