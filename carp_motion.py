@@ -762,6 +762,7 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
     local.lon = to_ephem_coord(lon)
     local.elevation = elev
     local.pressure = 0
+    local.epoch = ephem.J2000
     
     #
     # Do intial compute on the target
@@ -772,6 +773,10 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
     v._ra = to_ephem_coord(t_ra)
     v._dec = to_ephem_coord(t_dec)
     
+    #
+    # Mark our starting time
+    #
+    start_time = time.time()
     
     while True:
         #
@@ -800,13 +805,13 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
         #
         # If elevation has drifted enough, move through computed angle
         #
-        if (abs(cur_el - t_el) > 0.1):
+        if (abs(cur_el - t_el) >= 0.1):
             move_el_angle(t_el-cur_el)
         
         #
         # If azimuth has drifted enough, move through computed angle
         #
-        if (abs(cur_az - t_az) > 0.1):
+        if (abs(cur_az - t_az) >= 0.1):
             move_az_angle(t_az-cur_az)
         
         ltp = time.gmtime()
