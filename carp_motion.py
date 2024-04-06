@@ -951,12 +951,14 @@ def main():
     fp.write("TARGET: %f %f\n" % (tra, tdec))
     fp.flush()
         
-    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset, fp, args.absolute, args.posonly, body) != True):
+    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset,
+        fp, args.absolute, args.posonly, body) != True):
         print ("Problem encountered--exiting prior to tracking")
         exit(1)
     
     if (args.absolute == False and args.tracking > 0):
-        if (track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset, fp, body)
+        if (track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset,
+            fp, body)
             != True):
             print ("Problem encountered while tracking.  Done tracking")
             exit(1)
