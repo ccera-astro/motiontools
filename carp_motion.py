@@ -274,7 +274,7 @@ PAUSE_TIME = 1.0
 #
 # Returns: True for success False otherwise
 #
-def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, posonly):
+def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, posonly, body):
 
     #
     # Prime ephem to know about our location and time
@@ -291,11 +291,16 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     #  celestial coordinate
     #
     local.date = ephem.now()
-    v = ephem.FixedBody()
-    e = ephem.Equatorial(to_ephem_coord(t_ra), to_ephem_coord(t_dec))
-    v._ra = e.ra
-    v._dec = e.dec
-    v._epoch = ephem.J2000
+    if (body == None):
+        v = ephem.FixedBody()
+        e = ephem.Equatorial(to_ephem_coord(t_ra), to_ephem_coord(t_dec))
+        v._ra = e.ra
+        v._dec = e.dec
+        v._epoch = ephem.J2000
+    else:
+        v = body
+        t_ra = from_ephem_coord(str(v.ra))
+        t_dec = from_ephem_coord(str(v.dec))
     v.compute(local)
     #print ("_RA %s _DEC %s" % (v._ra, v._dec))
     #print ("G_RA %s G_DEC %s" % (v.g_ra, v.g_dec))
@@ -747,7 +752,7 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
 #
 # Returns: True for success False otherwise
 #
-def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
+def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body):
 
     #
     # Measurement interval, seconds
@@ -769,9 +774,14 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp):
     #  celestial coordinate
     #
     local.date = ephem.now()
-    v = ephem.FixedBody()
-    v._ra = to_ephem_coord(t_ra)
-    v._dec = to_ephem_coord(t_dec)
+    if (body == None):
+        v = ephem.FixedBody()
+        v._ra = to_ephem_coord(t_ra)
+        v._dec = to_ephem_coord(t_dec)
+    else:
+        v = body
+        t_ra = from_ephem_coord(str(v.ra))
+        t_dec = from_ephem_coord(str(v.dec))
     
     #
     # Mark our starting time
@@ -844,6 +854,9 @@ from skyfield.api import load
 def main():
     global rpc
     global rpc2
+    planets = {"sun" : ephem.Sun(), "moon" : ephem.Moon(), "mercury" : ephem.Mercury(),
+        "venus" : ephem.Venus(), "jupiter" : ephem.Jupiter(), "saturn" : ephem.Saturn(),
+        "neptune" : ephem.Neptune(), "uranus" : ephem.Uranus(), "pluto" : ephem.Pluto()}
 
     
     parser = argparse.ArgumentParser()
@@ -880,6 +893,8 @@ def main():
     tra = args.ra
     tdec = args.dec
     
+    body = None
+    
     #
     # They've asked to track a planetary body
     #
@@ -890,6 +905,7 @@ def main():
     #   but I think the coordinate transrorms in pyephem are still valid
     #
     if (args.planet != None):
+        """
         #
         # Use SkyField to determine RA/DEC of planet
         #
@@ -915,6 +931,17 @@ def main():
             print ("Position for object %s is RA: %f DEC: %f" %
                 (args.planet, tra, tdec))
             return (True)
+        """
+        planet = args.planet.lower()
+        if (planet not in planets):
+            print ("No such planet %s" % args.planet)
+            return False
+        else:
+            body = planets[planet]
+            body.compute(ephem.now())
+            print ("body: %s %s" % (str(body.ra), str(body.dec)))
+            tra = from_ephem_coord(str(body.ra))
+            tdec = from_ephem_coord(str(body.dec))
 
     ltp = time.gmtime()
     ts = "%04d%02d%02d%02d%02d" % (ltp.tm_year, ltp.tm_mon, ltp.tm_mday,
@@ -924,12 +951,12 @@ def main():
     fp.write("TARGET: %f %f\n" % (tra, tdec))
     fp.flush()
         
-    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset, fp, args.absolute, args.posonly) != True):
+    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset, fp, args.absolute, args.posonly, body) != True):
         print ("Problem encountered--exiting prior to tracking")
         exit(1)
     
     if (args.absolute == False and args.tracking > 0):
-        if (track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset, fp)
+        if (track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset, fp, body)
             != True):
             print ("Problem encountered while tracking.  Done tracking")
             exit(1)
