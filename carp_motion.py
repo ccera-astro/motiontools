@@ -209,6 +209,8 @@ def proportional_speed(pdiff,lim,linear):
         v1 = pdiff / lim
         r = gear_spin_max - (gear_spin_max/15)
         v2 = (r * v1) + (gear_spin_max/15)
+        v2 = int(int(v2/QUANTUM) * QUANTUM)
+        v2 = float(v2)
         return v2
         
 
