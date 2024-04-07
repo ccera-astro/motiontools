@@ -603,6 +603,43 @@ public:
     }
 };
 
+class AccLimit : public xmlrpc_c::method {
+    SysManager *Manager;
+public:
+    AccLimit (SysManager *myMgr) {
+        // signature and help strings are documentation -- the client
+        // can query this information with a system.methodSignature and
+        // system.methodHelp RPC.
+        this->_signature = "i:ii";
+            // method's result and two arguments are integer/float
+        this->_help = "This method sets the acceleration limit for a motor";
+        this->Manager = myMgr;
+    }
+    void
+    execute(xmlrpc_c::paramList const& paramList,
+            xmlrpc_c::value *   const  retvalP) {
+        
+        int rval = 0;
+        int const which(paramList.getInt(0));
+        int const limit(paramList.getInt(1));
+        
+        paramList.verifyEnd(2);
+        
+        IPort &myPort = Manager->Ports(0);
+        int cnt = (int)myPort.NodeCount();
+        if (which < cnt)
+        {
+    
+            INode &myNode = myPort.Nodes(which);
+            myNode.Motion.AccLimit = limit;
+        }
+        else
+        {
+            rval = -2;
+        }
+        *retvalP = xmlrpc_c::value_int(rval);
+    }
+};
 
 int 
 SetUpXMLRPC(SysManager *myMgr) {
@@ -619,6 +656,7 @@ SetUpXMLRPC(SysManager *myMgr) {
         xmlrpc_c::methodPtr const ResetAlertsP(new ResetAlerts(myMgr));
         xmlrpc_c::methodPtr const QueryTorqueP(new QueryTorque(myMgr));
         xmlrpc_c::methodPtr const AngleMoveP(new AngleMove(myMgr));
+        xmlrpc_c::methodPtr const AccLimitP(new AccLimit(myMgr));
 
         myRegistry.addMethod("Move", MoveMethodP);
         myRegistry.addMethod("Shutdown", ShutdownMethodP);
@@ -629,6 +667,7 @@ SetUpXMLRPC(SysManager *myMgr) {
         myRegistry.addMethod("ResetAlerts", ResetAlertsP);
         myRegistry.addMethod("QueryTorque", QueryTorqueP);
         myRegistry.addMethod("AngleMove", AngleMoveP);
+        myRegistry.addMethod("AccLimit", AccLimitP);
         
         signal(SIGALRM, alarm_handler);
         signal(SIGINT, exit_handler);
