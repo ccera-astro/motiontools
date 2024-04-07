@@ -9,9 +9,6 @@ import xmlrpc.client as xml
 import argparse
 import traceback
 
-ENCODER_BITS=14
-ENCODER_RESOLUTION=360.0/(2**ENCODER_BITS)
-
 #
 # Establish some constants
 #
@@ -63,11 +60,15 @@ AZIMUTH_LIMITS = (1.0,359.0)
 
 #
 # Gear spin max
+#
+# Can be modified by command-line parameter
+#
 GEAR_SPIN_MAX = 1600.0
 gear_spin_max = GEAR_SPIN_MAX
 
 #
 # Acceleration limit -- RPM/SEC
+# Default.  Can be modifed by command-line limit
 #
 ACC_LIMIT = 2750
 
@@ -196,6 +197,11 @@ def track_rate(declination):
 # We quantize to QUANTUM steps, to reduce the amount of needless changing of
 #  motor speed at our loop cadence.
 #
+# The default proportionality is non-linear
+#
+# But if the "linear" parameter is true, it uses a linear ramp
+#
+#
 QUANTUM=15
 def proportional_speed(pdiff,lim,linear):
     global gear_spin_max
@@ -213,7 +219,6 @@ def proportional_speed(pdiff,lim,linear):
         v2 = float(v2)
         return v2
         
-
 #
 # Degrees/second from RPM and ratio
 #
@@ -232,6 +237,7 @@ def dps_to_rpm(d, ratio):
 #
 # We start going into proportional control at this limit in offset between
 #  the current and target position (degrees)
+# Command line can change this
 #
 PROP_LIMIT = 2.75
 prop_limit = PROP_LIMIT
@@ -245,6 +251,7 @@ prop_limit = PROP_LIMIT
 # targ_az - target azimuth in decimal-float format
 # cur_el - current elevation in decimal-float format
 # cur_az - current azimuth in decimal-float format
+# linear - boolean to indicate linear ramp for proportional speed
 #
 # Returns:  (el_slew, az_slew)   slew speeds in decimal-float
 #
@@ -281,10 +288,15 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
 #
 # Pause time between slewing-rate updates
 #
+# Can be changed by command-line parameter
+#
 PAUSE_TIME = 0.5
 
 #
 # Sanity-checking interval
+#
+# Can be changed by command-line parameter
+#
 SANITY_TIME = 5.0
 
 #
