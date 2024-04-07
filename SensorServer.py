@@ -82,7 +82,7 @@ def query_both_axes():
     global current_elev
     
     return (current_elev,current_az)
-
+	
 def device_loop(eloffs,azoffs):
     global current_az
     global current_elev

@@ -7,6 +7,7 @@ import datetime
 import time
 import xmlrpc.client as xml
 import argparse
+import traceback
 
 ENCODER_BITS=14
 ENCODER_RESOLUTION=360.0/(2**ENCODER_BITS)
@@ -426,8 +427,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
 
         if (abs(cur_az - t_az) >= 0.14):
             az_running = True
-        
-                
+         
         #
         # We haved reached the object in elevation--zero speed
         #
@@ -923,17 +923,36 @@ def main():
     fp = open("%s-motion.csv"  % ts ,  "w")
     fp.write("TARGET: %f %f\n" % (tra, tdec))
     fp.flush()
-        
-    if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset,
-        fp, args.absolute, args.posonly, body) != True):
-        print ("Problem encountered--exiting prior to tracking")
+    
+    try:    
+        if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset,
+            fp, args.absolute, args.posonly, body) != True):
+            print ("Problem encountered--exiting prior to tracking")
+            exit(1)
+    except Exception:
+        print ("Exception raised in moveto()--setting motors to zero speed")
+        set_el_speed(0.0)
+        set_az_speed(0.0)
+        print ("Traceback--")
+        print (traceback.format_exc())
+        time.sleep(1.5)
         exit(1)
+        
     
     if (args.absolute == False and args.tracking > 0):
-        if (track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset,
-            fp, body)
-            != True):
-            print ("Problem encountered while tracking.  Done tracking")
+        try:
+            if (track(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset,
+                fp, body)
+                != True):
+                print ("Problem encountered while tracking.  Done tracking")
+                exit(1)
+        except Exception:
+            print ("Exception raised in track() -- setting motors to zero speed")
+            set_el_speed(0.0)
+            set_az_speed(0.0)
+            print ("Traceback--")
+            print(traceback.format_exc())
+            time.sleep(1.5)
             exit(1)
     fp.close()
 
