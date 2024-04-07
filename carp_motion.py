@@ -364,7 +364,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     #
     # Pick up initial values for sensors
     # We use these to compare current actual position, on a lazy cadence
-    #   (every 5 seconds), to check that if there's a non-zero commanded
+    #   (every SANITY_TIME seconds), to check that if there's a non-zero commanded
     #   motor speed, there is at least *some* motion over that interval.
     #
     last_time_sensors = time.time()
@@ -525,8 +525,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
                 break
             cmp_az = cur_az
             cmp_el = cur_el
-            
-        
+   
     #
     # No matter how we exit from this loop, make sure things are "safe"
     #
