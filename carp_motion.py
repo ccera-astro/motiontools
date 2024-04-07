@@ -454,9 +454,13 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #  away.
         #
         if (abs(cur_el - t_el) >= 0.14):
+            if (el_running == False):
+                last_time_sensors = time.time()
             el_running = True
 
         if (abs(cur_az - t_az) >= 0.14):
+            if (az_running == False):
+                last_time_sensors = time.time()
             az_running = True
          
         #
