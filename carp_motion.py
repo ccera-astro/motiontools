@@ -357,7 +357,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         
         #
         # Update the ephem sky coordinates, which can still creep as we
-        #   run this control loop.
+        #   run this control loop, since, you know, the sky moves....
         #
 
         #
