@@ -330,34 +330,36 @@ blocks:
       \ time\nimport numpy\nimport os\nimport sys\nimport xmlrpc.client as xml\n\n\
       RPC = None\nRPC2 = None\n\ndef init_RPC(srvr):\n    global RPC\n    if (RPC\
       \ == None):\n        try:\n            RPC = xml.ServerProxy(srvr)\n       \
-      \ except:\n            RPC = None\n\ndef init_RPC2(srvr):\n\tglobal RPC2\n\t\
-      if (RPC2 == None):\n\t\tRPC2 = xml.ServerProxy(srvr)\n\t\ndef tryMove(lbl, ax,spd):\n\
-      \    try:\n        RPC.Move(ax,spd)\n    except:\n        pass\n\nupstate =\
-      \ 0\ndef elev_up(up,speed,srvr):\n    global RPC\n    global upstate\n\n   \
-      \ init_RPC(srvr)\n    if (RPC != None):\n        if (upstate != up):\n     \
-      \       upstate = up\n            if (up == 1):\n                tryMove(\"\
-      Up\", 0,speed)\n            if (up == 0):\n                tryMove(\"Up\", 0,0.0)\n\
-      \            \ndownstate = 0          \ndef elev_down(down,speed,srvr):\n  \
-      \  global RPC\n    global downstate\n\n    init_RPC(srvr)\n    if (RPC != None):\n\
-      \        if (down != downstate):\n            downstate = down\n           \
-      \ if (down == 1):\n                tryMove(\"Down\", 0,-1.0*speed)\n       \
-      \     if (down == 0):\n                tryMove(\"Down\", 0,0.0)\nweststate =\
-      \ 0               \ndef azim_west(west,speed,srvr):\n    global RPC\n    global\
-      \ weststate\n    init_RPC(srvr)\n    if (RPC != None):\n        if (weststate\
-      \ != west):\n            weststate = west\n            if (west == 1):\n   \
-      \             tryMove(\"West\", 1, speed)\n            if (west == 0):\n   \
-      \             tryMove(\"West\", 1, 0.0)\neaststate = 0\ndef azim_east(east,speed,srvr):\n\
+      \ except:\n            RPC = None\n\ndef init_RPC2(srvr):\n    global RPC2\n\
+      \    if (RPC2 == None):\n        RPC2 = xml.ServerProxy(srvr)\n    \ndef tryMove(lbl,\
+      \ ax,spd):\n    try:\n        RPC.Move(ax,spd)\n    except:\n        print (\"\
+      Exception in move on axis %d/%f\" % (ax, spd))\n        pass\n\nupstate = 0\n\
+      def elev_up(up,speed,srvr):\n    global RPC\n    global upstate\n\n    init_RPC(srvr)\n\
+      \    if (RPC != None):\n        if (upstate != up):\n            upstate = up\n\
+      \            if (up == 1):\n                tryMove(\"Up\", 0,speed)\n     \
+      \       if (up == 0):\n                tryMove(\"Up\", 0,0.0)\n            \n\
+      downstate = 0          \ndef elev_down(down,speed,srvr):\n    global RPC\n \
+      \   global downstate\n\n    init_RPC(srvr)\n    if (RPC != None):\n        if\
+      \ (down != downstate):\n            downstate = down\n            if (down ==\
+      \ 1):\n                tryMove(\"Down\", 0,-1.0*speed)\n            if (down\
+      \ == 0):\n                tryMove(\"Down\", 0,0.0)\nweststate = 0          \
+      \     \ndef azim_west(west,speed,srvr):\n    global RPC\n    global weststate\n\
+      \    init_RPC(srvr)\n    if (RPC != None):\n        if (weststate != west):\n\
+      \            weststate = west\n            if (west == 1):\n               \
+      \ tryMove(\"West\", 1, speed)\n            if (west == 0):\n               \
+      \ tryMove(\"West\", 1, 0.0)\neaststate = 0\ndef azim_east(east,speed,srvr):\n\
       \    global RPC\n    global eaststate\n    init_RPC(srvr)\n    if (RPC != None):\n\
       \        if (eaststate != east):\n            eaststate = east\n           \
       \ if (east == 1):\n                tryMove(\"East\", 1, -1.0*speed)\n      \
       \      if (east == 0):\n                tryMove(\"East\", 1, 0.0)\n\ndef get_posns(pacer,srvr):\n\
-      \    global RPC2\n    init_RPC2(srvr)\n    try:\n        posns = RPC2.get_both_axes()\n\
-      \    except:\n        posns = (-1000, -1000)\n    return(posns)\n"
+      \    global RPC2\n    init_RPC2(srvr)\n    try:\n        posns = RPC2.query_both_axes()\n\
+      \    except:\n        print (\"get_posns called, but exception was raised\"\
+      )\n        posns = (-1000, -1000)\n    return(posns)\n"
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [456, 36.0]
+    coordinate: [456, 44.0]
     rotation: 0
     state: true
 - name: motor_xml

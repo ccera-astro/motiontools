@@ -49,6 +49,7 @@ void exit_handler(int q)
         fprintf (stderr, "Shutting down due to signal\n");
         IPort &myPort = myMgr->Ports(0);
         int cnt = (int)myPort.NodeCount();
+        fprintf (stderr, "Shutting down %d motor nodes\n", cnt);
         for (int which = 0; which < (int)myPort.NodeCount(); which++)
         {
             INode &myNode = myPort.Nodes(which);
@@ -62,6 +63,7 @@ void exit_handler(int q)
             //myPort.BrakeControl.BrakeSetting(which, BRAKE_PREVENT_MOTION);
             //sleep((BK_DELAY/1000)+3);
             myNode.EnableReq(false);
+            sleep(1);
         }
     myMgr->PortsClose();
     sleep(1);
@@ -84,8 +86,8 @@ bool IsBusPowerLow(INode &theNode) {
 //sequential repeated moves on each axis.
 //*********************************************************************************
 
-#define ACC_LIM_RPM_PER_SEC 3500
-#define VEL_LIM_RPM         1750 
+#define ACC_LIM_RPM_PER_SEC 2850
+#define VEL_LIM_RPM         1600 
 #define TIME_TILL_TIMEOUT   10000   //The timeout used for homing(ms)
 
 
@@ -136,11 +138,12 @@ size_t portCount = 0;
         myMgr->PortsOpen(portCount);                //Open the port
         
         printf ("Ensuring brakes are engaged on startup\n");
-        printf ("First brake\n");
+        printf ("First brake AUTOCONTROL\n");
         myPort.BrakeControl.BrakeSetting(0, BRAKE_AUTOCONTROL);
-        printf ("Second brake\n");
+        sleep(1);
+        printf ("Second brake AUTOCONTROL\n");
         myPort.BrakeControl.BrakeSetting(1, BRAKE_AUTOCONTROL);
-        sleep (BK_DELAY/1000);
+        sleep (2);
         
         
         //Once the code gets past this point, it can be assumed that the Port has been opened without issue
@@ -151,19 +154,14 @@ size_t portCount = 0;
             INode &theNode = myPort.Nodes(iNode);
             theNode.EnableReq(false);               //Ensure Node is disabled before loading config file
 
-            myMgr->Delay(200);
-            /*
-             * REVISIT THIS!! We'd like to save the config files
-             *   from ClearView, and load them here.
-             */
-            //theNode.Setup.ConfigLoad("Config File path");
-
+            myMgr->Delay(500);
+            
             //The following statements will attempt to enable the node.  First,
             // any shutdowns or NodeStops are cleared, finally the node is enabled
             theNode.Status.AlertsClear();                   //Clear Alerts on node 
             theNode.Motion.NodeStopClear(); //Clear Nodestops on Node 
             //theNode.Setup.DelayToDisableMsecs = BK_DELAY;
-            myMgr->Delay(200);
+            myMgr->Delay(1200);
             theNode.EnableReq(true);                    //Enable node 
             //At this point the node is enabled
             printf("Node \t%zi enabled\n", iNode);
@@ -186,11 +184,10 @@ size_t portCount = 0;
             theNode.Motion.AccLimit = ACC_LIM_RPM_PER_SEC;      //Set Acceleration Limit (RPM/Sec)
             theNode.Motion.VelLimit = VEL_LIM_RPM;              //Set Velocity Limit (RPM)
             theNode.Motion.MoveVelStart(0.0);                   //This should cause it to hold
-            printf("Disengaging Brakes on Node %d\n", (int)iNode);
-            //myPort.BrakeControl.BrakeSetting((int)iNode,BRAKE_ALLOW_MOTION);        
+			sleep(1);
         }
         // Allow brakes time to disengage before taking MOVE orders from anyone
-        sleep(BK_DELAY/1000);
+        sleep(2);
         SetUpXMLRPC(myMgr);
     }
     catch (mnErr& theErr)
@@ -444,13 +441,14 @@ public:
         INode &myNode = myPort.Nodes(0);
         INode &myNode2 = myPort.Nodes(1);
         myPort.BrakeControl.BrakeSetting(0, BRAKE_PREVENT_MOTION);
+        sleep(1);
         myPort.BrakeControl.BrakeSetting(1, BRAKE_PREVENT_MOTION);
-        sleep(2);
+        sleep(1);
 
         myNode.EnableReq(false);
         sleep(1);
         myNode2.EnableReq(false);
-        sleep(1);
+        sleep(2);
 
         Manager->PortsClose();
         alarm(2);

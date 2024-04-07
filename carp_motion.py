@@ -29,7 +29,7 @@ AZ_PREFIX = 5.0
 #
 
 #
-# Ratio of the gearbox, up to the output pinion
+# Ratio of the main gearboxes, up to the output pinion
 #
 BOX_RATIO = (9.8125 * 8.368 * 6.095)
 
@@ -216,7 +216,7 @@ def dps_to_rpm(d, ratio):
 # We start going into proportional control at this limit in offset between
 #  the current and target position (degrees)
 #
-PROP_LIMIT = 2.5
+PROP_LIMIT = 2.75
 
 #
 # Determine desired slew rate, based on axis position offsets from target
@@ -258,10 +258,15 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az):
         az_slew *= -1.0
 
     return ((el_slew,az_slew))
+
 #
 # Pause time between slewing-rate updates
 #
-PAUSE_TIME = 1.0
+PAUSE_TIME = 0.5
+
+#
+# Sanity-checking interval
+SANITY_TIME = 5.0
 
 #
 # Move dish to target
@@ -301,13 +306,11 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         v = body
         t_ra = from_ephem_coord(str(v.ra))
         t_dec = from_ephem_coord(str(v.dec))
+        
+    #
+    # Compute current circumstances for the object (contained in 'v')
+    #
     v.compute(local)
-    #print ("_RA %s _DEC %s" % (v._ra, v._dec))
-    #print ("G_RA %s G_DEC %s" % (v.g_ra, v.g_dec))
-    #print ("A_RA %s A_DEC %s" % (v.a_ra, v.a_dec))
-    #print ("RA %s DEC %s" % (v.ra ,v.dec))
-    #print (str(v))
-    #print (str(local))
     
     #
     # Keep track of current speed
@@ -320,16 +323,23 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     #
     el_running = True
     az_running = True
-    
-    #
-    # Init our weirdness counter
-    #
-    weird_count = 0
-    
+ 
     #
     # Set return value
     #
     rv = True
+    
+    #
+    # Pick up initial values for sensors
+    # We use these to compare current actual position, on a lazy cadence
+    #   (every 5 seconds), to check that if there's a non-zero commanded
+    #   motor speed, there is at least *some* motion over that interval.
+    #
+    last_time_sensors = time.time()
+    cmp_axes = get_both_sensors()
+    cmp_el = cmp_axes[0]
+    cmp_az = cmp_exes[1]
+    time.sleep(PAUSE_TIME)
     
     #
     # Forever, until we zero-in on the target
@@ -346,7 +356,12 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
             break
         
         #
-        # Update the ephem sky coordinates
+        # Update the ephem sky coordinates, which can still creep as we
+        #   run this control loop.
+        #
+
+        #
+        # If not an absolute move
         #
         if (absolute == False):
             local.date = ephem.now()
@@ -360,10 +375,16 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
                 rv = False
                 break
             print ("Converging on AZ %f  EL %f" % (t_az, t_el))
+        #
+        # Else t_az and t_el will just be what they were at the top of this function
+        #
         else:
             t_az = t_ra
             t_el = t_dec
         
+        #
+        # Target would place us beyond limits
+        #
         if (t_el < ELEVATION_LIMITS[0] or t_el > ELEVATION_LIMITS[1]):
             set_el_speed(0.0)
             limits = True
@@ -375,9 +396,13 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         if (limits == True):
             break
         
+        #
+        # Get sensors
+        #
         axes = get_both_sensors()
         cur_el = axes[0]
         cur_az = axes[1]
+        
         if (cur_el < 0.0 or cur_el > 91.0):
             limits = True
             break
@@ -396,10 +421,28 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #  "close" at the start, but if we stop, it will drift further
         #  away.
         #
-        if (abs(cur_el - t_el) >= 0.15):
+        if (abs(cur_el - t_el) >= 0.14):
             el_running = True
-        if (abs(cur_az - t_az) >= 0.15):
+
+        if (abs(cur_az - t_az) >= 0.14):
             az_running = True
+        
+                
+        #
+        # We haved reached the object in elevation--zero speed
+        #
+        if (abs(cur_el - t_el) <= 0.07):
+            set_el_speed(0.0)
+            el_speed = 0.0
+            el_running = False
+        
+        #
+        # We have reached the object in azimuth--zero speed
+        #
+        if (abs(cur_az - t_az) <= 0.07):
+            set_az_speed(0.0)
+            az_speed = 0.0
+            az_running = False
             
         #
         # Determine desired slew-rate based on relative distances on
@@ -426,102 +469,32 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
                 print ("Problem during set_az_speed: %08X" % r)
                 rv = False
                 break
-        
-        #
-        # We haved reached the object in elevation--zero speed
-        #
-        if (abs(cur_el - t_el) <= 0.07):
-            set_el_speed(0.0)
-            el_speed = 0.0
-            el_running = False
-        
-        #
-        # We have reached the object in azimuth--zero speed
-        #
-        if (abs(cur_az - t_az) <= 0.07):
-            set_az_speed(0.0)
-            az_speed = 0.0
-            az_running = False
-            
+
         #
         # Wait PAUSE_TIME second between updates
         #
-        ptime = PAUSE_TIME
-        
-        if (dps(el_speed, ELEV_RATIO) < ENCODER_RESOLUTION*3.0):
-            ptime = PAUSE_TIME/2.0
-        if (dps(az_speed, AZIM_RATIO) < ENCODER_RESOLUTION*3.0):
-            ptime = PAUSE_TIME/2.0
-
-        time.sleep(ptime)
+        time.sleep(PAUSE_TIME)
         
         #
-        # Hmm, despite there being a 2-second pause the relevant axis
-        #   hasn't moved.  Declare some "weirdness"
+        # Do a very simple sanity check.
+        # If there's some commanded speed (xx_running is true),
+        #  check to make sure there has been some amount of motion.
         #
-        new_positions = get_both_sensors()
-        new_el = new_positions[0]
-        new_az = new_positions[1]
-        
-        #
-        # Compute expected and actual ELEV axis motion
-        #
-        expected_el = dps(el_speed, ELEV_RATIO)
-        expected_el_range = (expected_el * 0.30, expected_el * 3.0)
-        actual_el_motion = abs(new_el - cur_el) / ptime
-
-        #
-        # Compute expected and actual AZIM axis motion
-        #
-        expected_az = dps(az_speed, AZIM_RATIO)
-        expected_az_range = (expected_az * 0.3, expected_az * 3.0)
-        actual_az_motion = abs(new_az - cur_az) / ptime
-        
-        #
-        # Is the actual ELEV speed somewhere in the rough range of expected speed?
-        #
-        if ((el_running == True) and (actual_el_motion <= expected_el_range[0] or
-            actual_el_motion >= expected_el_range[1])):
-            #
-            # Special case--if we're moving really slow, the encoder may not have
-            #  updated in its lowest bit position.
-            #
-            if (actual_el_motion != 0.0):
-                print ("EL MOTION FAULT: actual %f range %f-%f commanded %f" % (actual_el_motion,
-                    expected_el_range[0], expected_el_range[1], dps(el_speed, ELEV_RATIO)))
-                rv = False
-                set_el_speed(0.0)
+        if ((time.time() - last_time_sensors) >= SANITY_TIME):
+            last_time_sensors = time.time()
+            if (az_running == True and az_speed > 0.0 and abs(cur_az-cmp_az) <= 0.0):
+                print ("AZ: apparently not spinning or encoder failure")
                 set_az_speed(0.0)
+                rv = False
                 break
-            elif(dps(el_speed, ELEV_RATIO) > ENCODER_RESOLUTION*2.25):
-                print ("EL MOTION FAULT: encoder or motor system not moving")
+            if (el_running == True and el_speed > 0.0 and abs(cur_el-cmp_el) <= 0.0):
                 set_el_speed(0.0)
-                set_az_speed(0.0)
+                print ("EL: apparently not spinning or encoder failure")
                 rv = False
-                
-        #
-        # Is the actual AZIM speed somewhere in the rough range of expected speed?
-        #
-        if ((az_running == True) and (actual_az_motion <= expected_az_range[0] or
-            actual_az_motion >= expected_az_range[1])):
+                break
+            cmp_az = cur_az
+            cmp_el = cur_el
             
-            #
-            # Special case here -- if the actual motion is 0.0, it's probably because
-            #   we're moving at a rate that is too slow to see an update.
-            #
-            if (actual_az_motion != 0.0):
-                print ("AZ MOTION FAULT: actual %f range %f-%f commanded %f" % (actual_az_motion,
-                    expected_az_range[0], expected_az_range[1], dps(az_speed, AZIM_RATIO)))
-                set_el_speed(0.0)
-                set_az_speed(0.0)
-                rv = False
-                break
-            elif (dps(az_speed, AZIM_RATIO) > ENCODER_RESOLUTION*2.25):
-                print ("AZ MOTION FAULT: encoder or motor system not moving")
-                set_el_speed(0.0)
-                set_az_speed(0.0)
-                rv = False
-                break
         
     #
     # No matter how we exit from this loop, make sure things are "safe"
@@ -757,7 +730,7 @@ def track(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body)
     #
     # Measurement interval, seconds
     #
-    minterval = 8
+    minterval = 7.5
     
     #
     # Prime ephem to know about our location and time

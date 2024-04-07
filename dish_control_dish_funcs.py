@@ -17,14 +17,15 @@ def init_RPC(srvr):
             RPC = None
 
 def init_RPC2(srvr):
-	global RPC2
-	if (RPC2 == None):
-		RPC2 = xml.ServerProxy(srvr)
-	
+    global RPC2
+    if (RPC2 == None):
+        RPC2 = xml.ServerProxy(srvr)
+    
 def tryMove(lbl, ax,spd):
     try:
         RPC.Move(ax,spd)
     except:
+        print ("Exception in move on axis %d/%f" % (ax, spd))
         pass
 
 upstate = 0
@@ -83,7 +84,8 @@ def get_posns(pacer,srvr):
     global RPC2
     init_RPC2(srvr)
     try:
-        posns = RPC2.get_both_axes()
+        posns = RPC2.query_both_axes()
     except:
+        print ("get_posns called, but exception was raised")
         posns = (-1000, -1000)
     return(posns)
