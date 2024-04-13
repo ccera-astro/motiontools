@@ -51,7 +51,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [448, 236.0]
+    coordinate: [1080, 228.0]
     rotation: 0
     state: true
 - name: azim_east
@@ -68,7 +68,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [232, 252.0]
+    coordinate: [928, 212.0]
     rotation: 0
     state: true
 - name: azim_east_status
@@ -97,7 +97,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [232, 124.0]
+    coordinate: [928, 100.0]
     rotation: 0
     state: true
 - name: azim_west_status
@@ -130,7 +130,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [456, 92.0]
+    coordinate: [1072, 100.0]
     rotation: 0
     state: true
 - name: elev_dn_status
@@ -191,6 +191,47 @@ blocks:
     coordinate: [608, 36.0]
     rotation: 0
     state: true
+- name: exit_status
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.sysExit(shutdown,motor_xml)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [584, 300.0]
+    rotation: 0
+    state: true
+- name: limit_status
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.ResetLimits(limits,motor_xml)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [376, 140.0]
+    rotation: 0
+    state: true
+- name: limits
+  id: variable_qtgui_push_button
+  parameters:
+    comment: ''
+    gui_hint: 7,2,1,1
+    label: '>>>>RESET LIMITS<<<'
+    pressed: '1'
+    released: '0'
+    type: int
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1208, 220.0]
+    rotation: 0
+    state: true
 - name: pacer
   id: variable_function_probe
   parameters:
@@ -204,7 +245,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [800, 252.0]
+    coordinate: [776, 252.0]
     rotation: 0
     state: true
 - name: posns
@@ -231,6 +272,23 @@ blocks:
     coordinate: [184, 12]
     rotation: 0
     state: enabled
+- name: shutdown
+  id: variable_qtgui_push_button
+  parameters:
+    comment: ''
+    gui_hint: 7,0,1,1
+    label: '>>>EXIT MOTOR SRVR<<<'
+    pressed: '1'
+    released: '0'
+    type: int
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1200, 100.0]
+    rotation: 0
+    state: true
 - name: variable_qtgui_label_0
   id: variable_qtgui_label
   parameters:
@@ -244,7 +302,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [768, 76.0]
+    coordinate: [1080, 12.0]
     rotation: 0
     state: true
 - name: variable_qtgui_label_0_0
@@ -260,7 +318,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [936, 76.0]
+    coordinate: [1232, 12.0]
     rotation: 0
     state: true
 - name: analog_sig_source_x_0
@@ -299,7 +357,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [592, 436.0]
+    coordinate: [976, 428.0]
     rotation: 0
     state: true
 - name: blocks_throttle_0
@@ -327,39 +385,46 @@ blocks:
     alias: ''
     comment: ''
     source_code: "# this module will be imported in the into your flowgraph\nimport\
-      \ time\nimport numpy\nimport os\nimport sys\nimport xmlrpc.client as xml\n\n\
-      RPC = None\nRPC2 = None\n\ndef init_RPC(srvr):\n    global RPC\n    if (RPC\
-      \ == None):\n        try:\n            RPC = xml.ServerProxy(srvr)\n       \
-      \ except:\n            RPC = None\n\ndef init_RPC2(srvr):\n    global RPC2\n\
-      \    if (RPC2 == None):\n        RPC2 = xml.ServerProxy(srvr)\n    \ndef tryMove(lbl,\
-      \ ax,spd):\n    try:\n        RPC.Move(ax,spd)\n    except:\n        print (\"\
-      Exception in move on axis %d/%f\" % (ax, spd))\n        pass\n\nupstate = 0\n\
-      def elev_up(up,speed,srvr):\n    global RPC\n    global upstate\n\n    init_RPC(srvr)\n\
-      \    if (RPC != None):\n        if (upstate != up):\n            upstate = up\n\
-      \            if (up == 1):\n                tryMove(\"Up\", 0,speed)\n     \
-      \       if (up == 0):\n                tryMove(\"Up\", 0,0.0)\n            \n\
-      downstate = 0          \ndef elev_down(down,speed,srvr):\n    global RPC\n \
-      \   global downstate\n\n    init_RPC(srvr)\n    if (RPC != None):\n        if\
-      \ (down != downstate):\n            downstate = down\n            if (down ==\
-      \ 1):\n                tryMove(\"Down\", 0,-1.0*speed)\n            if (down\
-      \ == 0):\n                tryMove(\"Down\", 0,0.0)\nweststate = 0          \
-      \     \ndef azim_west(west,speed,srvr):\n    global RPC\n    global weststate\n\
-      \    init_RPC(srvr)\n    if (RPC != None):\n        if (weststate != west):\n\
-      \            weststate = west\n            if (west == 1):\n               \
-      \ tryMove(\"West\", 1, speed)\n            if (west == 0):\n               \
-      \ tryMove(\"West\", 1, 0.0)\neaststate = 0\ndef azim_east(east,speed,srvr):\n\
+      \ time\nimport numpy\nimport os\nimport sys\nimport xmlrpc.client as xml\nimport\
+      \ time\n\nRPC = None\nRPC2 = None\n\ndef init_RPC(srvr):\n    global RPC\n \
+      \   if (RPC == None):\n        try:\n            RPC = xml.ServerProxy(srvr)\n\
+      \        except:\n            RPC = None\n\ndef sysExit(v,srvr):\n    global\
+      \ RPC\n    init_RPC(srvr)\n    \n    if (v == 1):\n        try:\n          \
+      \  RPC.SysExit(0)\n        except:\n            pass\n    \ndef init_RPC2(srvr):\n\
+      \    global RPC2\n    if (RPC2 == None):\n        RPC2 = xml.ServerProxy(srvr)\n\
+      \ndef ResetLimits(btn,srvr):\n    if (btn == 1):\n        axLimits(0,srvr)\n\
+      \        time.sleep(0.25)\n        axLimits(1,srvr)\n       \ndef axLimits(ax,srvr):\n\
+      \    global RPC\n    init_RPC(srvr)\n    try:\n        RPC.AccLimit(ax, 1000)\n\
+      \        time.sleep(0.25)\n        RPC.VelLimit(ax, 1200)\n        rv = True\n\
+      \    except:\n        rv = False\n    return rv\n\ndef tryMove(lbl, ax,spd):\n\
+      \    global RPC\n    try:\n        RPC.Move(ax,spd)\n    except:\n        print\
+      \ (\"Exception in move on axis %d/%f\" % (ax, spd))\n        pass\n\nupstate\
+      \ = 0\ndef elev_up(up,speed,srvr):\n    global RPC\n    global upstate\n\n \
+      \   init_RPC(srvr)\n    if (RPC != None):\n        if (upstate != up):\n   \
+      \         upstate = up\n            if (up == 1):\n                tryMove(\"\
+      Up\", 0,speed)\n            if (up == 0):\n                tryMove(\"Up\", 0,0.0)\n\
+      \            \ndownstate = 0          \ndef elev_down(down,speed,srvr):\n  \
+      \  global RPC\n    global downstate\n\n    init_RPC(srvr)\n    if (RPC != None):\n\
+      \        if (down != downstate):\n            downstate = down\n           \
+      \ if (down == 1):\n                tryMove(\"Down\", 0,-1.0*speed)\n       \
+      \     if (down == 0):\n                tryMove(\"Down\", 0,0.0)\nweststate =\
+      \ 0               \ndef azim_west(west,speed,srvr):\n    global RPC\n    global\
+      \ weststate\n    init_RPC(srvr)\n    if (RPC != None):\n        if (weststate\
+      \ != west):\n            weststate = west\n            if (west == 1):\n   \
+      \             tryMove(\"West\", 1, speed)\n            if (west == 0):\n   \
+      \             tryMove(\"West\", 1, 0.0)\neaststate = 0\ndef azim_east(east,speed,srvr):\n\
       \    global RPC\n    global eaststate\n    init_RPC(srvr)\n    if (RPC != None):\n\
       \        if (eaststate != east):\n            eaststate = east\n           \
       \ if (east == 1):\n                tryMove(\"East\", 1, -1.0*speed)\n      \
       \      if (east == 0):\n                tryMove(\"East\", 1, 0.0)\n\ndef get_posns(pacer,srvr):\n\
       \    global RPC2\n    init_RPC2(srvr)\n    try:\n        posns = RPC2.query_both_axes()\n\
-      \    except:\n        print (\"get_posns called, but exception was raised\"\
+      \    except:\n        #print (\"get_posns called, but exception was raised\"\
       )\n        posns = (-1000, -1000)\n    return(posns)\n"
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [456, 44.0]
+    coordinate: [400, 28.0]
     rotation: 0
     state: true
 - name: motor_xml
@@ -427,19 +492,36 @@ blocks:
     coordinate: [384, 596.0]
     rotation: 0
     state: true
+- name: snippet_0
+  id: snippet
+  parameters:
+    alias: ''
+    code: 'dish_funcs.axLimits(0,self.motor_xml)
+
+      dish_funcs.axLimits(1,self.motor_xml)'
+    comment: ''
+    priority: '0'
+    section: main_after_init
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [248, 500.0]
+    rotation: 0
+    state: true
 - name: variable_qtgui_azelplot_0
   id: variable_qtgui_azelplot
   parameters:
     backgroundColor: white
     comment: ''
     dotColor: ro
-    gui_hint: ''
+    gui_hint: 3,0,3,4
     label: TELESCOPE POSITION
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [880, 420.0]
+    coordinate: [1296, 436.0]
     rotation: 0
     state: true
 
