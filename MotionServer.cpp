@@ -86,7 +86,7 @@ bool IsBusPowerLow(INode &theNode) {
 //sequential repeated moves on each axis.
 //*********************************************************************************
 
-#define ACC_LIM_RPM_PER_SEC 2850
+#define ACC_LIM_RPM_PER_SEC 1250
 #define VEL_LIM_RPM         1600 
 #define TIME_TILL_TIMEOUT   10000   //The timeout used for homing(ms)
 
@@ -155,6 +155,40 @@ size_t portCount = 0;
             theNode.EnableReq(false);               //Ensure Node is disabled before loading config file
 
             myMgr->Delay(500);
+            
+            theNode.Status.RT.Refresh();
+			theNode.Status.Alerts.Refresh();
+			if (!theNode.Status.RT.Value().cpm.AlertPresent)
+			{
+				fprintf (stderr, "No alerts present for Motor %d\n", (int)iNode);
+            }
+            else
+            {
+				char alertList[256];
+				char instr[1024];
+				char *retp;
+				int cont = 0;
+				
+				fprintf (stderr, "Motor %d ALERTS PRESENT:\n", (int)iNode);
+				
+				theNode.Status.Alerts.Value().StateStr(alertList, sizeof(alertList));
+				
+				fprintf (stderr, "%s\n", alertList);
+				
+				fprintf (stderr, "Continue?");
+				retp = fgets(instr, 1024, stdin);
+				if (strcmp (instr, "y\n") == 0 || strcmp(instr, "Y\n") == 0 ||
+					strcmp (instr, "yes\n") == 0 || strcmp(instr, "YES\n") == 0)
+				{
+					cont = 1;
+				}
+				if (cont != 1)
+				{
+					fprintf (stderr, "Not continuing\n");
+					return -1;
+				}
+				
+			}
             
             //The following statements will attempt to enable the node.  First,
             // any shutdowns or NodeStops are cleared, finally the node is enabled
@@ -641,6 +675,44 @@ public:
     }
 };
 
+class VelLimit : public xmlrpc_c::method {
+    SysManager *Manager;
+public:
+    VelLimit (SysManager *myMgr) {
+        // signature and help strings are documentation -- the client
+        // can query this information with a system.methodSignature and
+        // system.methodHelp RPC.
+        this->_signature = "i:ii";
+            // method's result and two arguments are integer/float
+        this->_help = "This method sets the velocity limit for a motor";
+        this->Manager = myMgr;
+    }
+    void
+    execute(xmlrpc_c::paramList const& paramList,
+            xmlrpc_c::value *   const  retvalP) {
+        
+        int rval = 0;
+        int const which(paramList.getInt(0));
+        int const limit(paramList.getInt(1));
+        
+        paramList.verifyEnd(2);
+        
+        IPort &myPort = Manager->Ports(0);
+        int cnt = (int)myPort.NodeCount();
+        if (which < cnt)
+        {
+    
+            INode &myNode = myPort.Nodes(which);
+            myNode.Motion.VelLimit = limit;
+        }
+        else
+        {
+            rval = -2;
+        }
+        *retvalP = xmlrpc_c::value_int(rval);
+    }
+};
+
 int 
 SetUpXMLRPC(SysManager *myMgr) {
 
@@ -657,7 +729,8 @@ SetUpXMLRPC(SysManager *myMgr) {
         xmlrpc_c::methodPtr const QueryTorqueP(new QueryTorque(myMgr));
         xmlrpc_c::methodPtr const AngleMoveP(new AngleMove(myMgr));
         xmlrpc_c::methodPtr const AccLimitP(new AccLimit(myMgr));
-
+        xmlrpc_c::methodPtr const VelLimitP(new VelLimit(myMgr));
+        
         myRegistry.addMethod("Move", MoveMethodP);
         myRegistry.addMethod("Shutdown", ShutdownMethodP);
         myRegistry.addMethod("Enable", EnableMethodP);
@@ -668,6 +741,7 @@ SetUpXMLRPC(SysManager *myMgr) {
         myRegistry.addMethod("QueryTorque", QueryTorqueP);
         myRegistry.addMethod("AngleMove", AngleMoveP);
         myRegistry.addMethod("AccLimit", AccLimitP);
+        myRegistry.addMethod("VelLimit", VelLimitP);
         
         signal(SIGALRM, alarm_handler);
         signal(SIGINT, exit_handler);
