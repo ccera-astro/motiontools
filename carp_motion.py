@@ -97,11 +97,17 @@ def move_az_angle(angle):
     shaft_angle = angle * AZIM_RATIO
     return rpc.AngleMove(1,float(shaft_angle*AZ_SIGN))
 
+def wait_az_move(count):
+    return rpc.MoveWait(1, count)
+
 def move_el_angle(angle):
     global rpc
 
     shaft_angle = angle * ELEV_RATIO
     return rpc.AngleMove(0,float(shaft_angle*ELEV_SIGN))
+
+def wait_el_move(count):
+    return rpc.MoveWait(0, count)
 
 def set_el_acclimit(limit):
     global rpc
@@ -133,6 +139,11 @@ def get_both_sensors():
     global rpc2
     return (rpc2.query_both_axes())
 
+def restore_limits():
+    set_az_acclimit(2000)
+    set_az_vellimit(1600)
+    set_el_acclimit(2000)
+    set_el_vellimit(1600)
 #
 # Take a decimal-degrees coordinate, and transform to the HH:MM:SS
 #   that ephem uses
@@ -655,14 +666,49 @@ def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, 
         #
         # If elevation has drifted enough, move through computed angle
         #
-        if (abs(cur_el - t_el) >= 0.1):
+        el_in_motion = False
+        if (abs(cur_el - t_el) >= 0.07):
             move_el_angle(t_el-cur_el)
+            el_in_motion = True
 
         #
         # If azimuth has drifted enough, move through computed angle
         #
-        if (abs(cur_az - t_az) >= 0.1):
+        az_in_motion = False
+        if (abs(cur_az - t_az) >= 0.07):
             move_az_angle(t_az-cur_az)
+            az_in_motion = True
+        
+        #
+        # It won't actually happen that often that AZ and EL both need
+        #   waiting-for at the same time, but we deal with that situation
+        #   regardless.
+        #
+        if (az_in_motion or el_in_motion):
+            wc = 10
+            az_done = False if az_in_motion == True else True
+            el_done = False if el_in_motion == True else True
+            while (wc > 0):
+                if (not az_done and az_in_motion and wait_az_move(0) != 0):
+                    ez_done = True
+                if (not el_done and el_in_motion and wait_el_move(0) != 0):
+                    el_done = True
+                if (el_done and az_done):
+                    break
+                wc -= 1
+                time.sleep(1)
+                    
+        #
+        # We wait on the axis moves, but make sure that if required, both motions
+        #   are initiated in the same iteration.
+        #
+        if (el_in_motion == True):
+            wait_el_move(75)
+            el_in_motion = False
+            
+        if (az_in_motion == True):
+            wait_az_move(75)
+            az_in_motion == False
 
         ltp = time.gmtime()
         lfp.write ("%02d,%02d,%02d,TRACK,%f,%f,%f,%f\n" % (ltp.tm_hour,
@@ -1043,11 +1089,17 @@ def main():
             if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset,
                 fp, args.absolute, args.posonly, body, args.pause, args.sanity, args.linear) != True):
                 print ("Problem encountered during slew--exiting prior to tracking")
+                if (args.simulate == False):
+                    set_el_speed(0.0)
+                    set_az_speed(0.0)
+                    restore_limits()
                 exit(1)
         except Exception:
             print ("Exception raised in moveto()--setting motors to zero speed")
-            set_el_speed(0.0)
-            set_az_speed(0.0)
+            if (args.simulate == False):
+               set_el_speed(0.0)
+               set_az_speed(0.0)
+               restore_limits()
             print ("Traceback--")
             print (traceback.format_exc())
             exit(1)
@@ -1062,12 +1114,17 @@ def main():
                 fp, body, args.tinterval, args.simulate)
                 != True):
                 print ("Problem encountered while tracking.  Done tracking")
+                if (args.simulate == False):
+                    set_el_speed(0.0)
+                    set_az_speed(0.0)
+                    restore_limits()
                 exit(1)
         except Exception:
             print ("Exception raised in track() -- setting motors to zero speed")
             if (args.simulate == False):
                 set_el_speed(0.0)
                 set_az_speed(0.0)
+                restore_limits()
             print ("Traceback--")
             print(traceback.format_exc())
             exit(1)

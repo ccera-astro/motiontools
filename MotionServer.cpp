@@ -395,10 +395,74 @@ public:
             //Get the positioning resolution of the Node
 			uint32_t myPosnResolution = myNode.Info.PositioningResolution;
             double target;
+            int waitcount = 0;
             
             // Turn angle into rotations, and then into encoder counts
             target = (angle / 360.0) * (double)myPosnResolution;
             myNode.Motion.MovePosnStart((int32_t)target, false, false);
+        }
+        else
+        {
+            rval = -2;
+        }
+        *retvalP = xmlrpc_c::value_int(rval);
+    }
+};
+
+class MoveWait : public xmlrpc_c::method {
+    SysManager *Manager;
+public:
+    MoveWait (SysManager *myMgr) {
+        // signature and help strings are documentation -- the client
+        // can query this information with a system.methodSignature and
+        // system.methodHelp RPC.
+        this->_signature = "i:ii";
+            // method's result and two arguments are integer/float
+        this->_help = "This method waits for a move to complete";
+        this->Manager = myMgr;
+    }
+    void
+    execute(xmlrpc_c::paramList const& paramList,
+            xmlrpc_c::value *   const  retvalP) {
+        
+        int rval = 0;
+        int const which(paramList.getInt(0));
+        int const waitcount(paramList.getInt(1));
+        
+        paramList.verifyEnd(2);
+        
+        IPort &myPort = Manager->Ports(0);
+        int cnt = (int)myPort.NodeCount();
+        if (which < cnt)
+        {
+    
+            INode &myNode = myPort.Nodes(which);
+            
+            // Turn angle into rotations, and then into encoder counts
+            int wc = waitcount;
+            if (wc == 0)
+            {
+				if (myNode.Motion.MoveIsDone())
+				{
+					rval = 1;
+				}
+				else
+				{
+					rval = 0;
+				}
+			}
+			else
+			{
+				while (!myNode.Motion.MoveIsDone())
+				{
+					usleep (100000);
+					if (wc-- <= 0)
+					{
+						rval = -3;
+						break;
+					}
+				}
+			}
         }
         else
         {
@@ -728,6 +792,7 @@ SetUpXMLRPC(SysManager *myMgr) {
         xmlrpc_c::methodPtr const ResetAlertsP(new ResetAlerts(myMgr));
         xmlrpc_c::methodPtr const QueryTorqueP(new QueryTorque(myMgr));
         xmlrpc_c::methodPtr const AngleMoveP(new AngleMove(myMgr));
+        xmlrpc_c::methodPtr const MoveWaitP(new MoveWait(myMgr));
         xmlrpc_c::methodPtr const AccLimitP(new AccLimit(myMgr));
         xmlrpc_c::methodPtr const VelLimitP(new VelLimit(myMgr));
         
@@ -742,6 +807,7 @@ SetUpXMLRPC(SysManager *myMgr) {
         myRegistry.addMethod("AngleMove", AngleMoveP);
         myRegistry.addMethod("AccLimit", AccLimitP);
         myRegistry.addMethod("VelLimit", VelLimitP);
+        myRegistry.addMethod ("MoveWait", MoveWaitP);
         
         signal(SIGALRM, alarm_handler);
         signal(SIGINT, exit_handler);
