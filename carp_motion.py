@@ -304,6 +304,17 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
 
     return ((el_slew,az_slew))
 
+def exit_motion_server():
+	global rpc
+	
+	rpc.SysExit(0)
+	
+def my_exit(rc,sexit):
+    if (sexit):
+        exit_motion_server()
+    sleep(1)
+    exit(rc)
+    
 #
 # Pause time between slewing-rate updates
 #
@@ -1027,6 +1038,7 @@ def main():
     parser.add_argument ("--trackonly", action="store_true", default=False, help="Only track, no slew")
     parser.add_argument ("--simulate", action="store_true", default=False, help="Simulate only, no motors or sensors")
     parser.add_argument ("--stuttered", action="store_true", default=False, help="Stuttered tracking")
+    parser.add_argument ("--serverexit", action="store_true", default=False, help="Exit motor server when done")
     args = parser.parse_args()
 
     gear_spin_max = args.speedlimit
@@ -1093,7 +1105,7 @@ def main():
                     set_el_speed(0.0)
                     set_az_speed(0.0)
                     restore_limits()
-                exit(1)
+                my_exit(1,args.serverexit)
         except Exception:
             print ("Exception raised in moveto()--setting motors to zero speed")
             if (args.simulate == False):
@@ -1102,8 +1114,7 @@ def main():
                restore_limits()
             print ("Traceback--")
             print (traceback.format_exc())
-            exit(1)
-
+            my_exit(1,args.serverexit)
 
     if (args.absolute == False and (args.tracking > 0)):
         try:
@@ -1118,7 +1129,7 @@ def main():
                     set_el_speed(0.0)
                     set_az_speed(0.0)
                     restore_limits()
-                exit(1)
+                my_exit(1,args.serverexit)
         except Exception:
             print ("Exception raised in track() -- setting motors to zero speed")
             if (args.simulate == False):
@@ -1127,8 +1138,9 @@ def main():
                 restore_limits()
             print ("Traceback--")
             print(traceback.format_exc())
-            exit(1)
+            my_exit(1,args.serverexit)
     fp.close()
+    exit_motion_server()
 
 if __name__ == '__main__':
     main()
