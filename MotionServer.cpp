@@ -60,8 +60,6 @@ void exit_handler(int q)
                     rval = -3;
                 }
             }
-            //myPort.BrakeControl.BrakeSetting(which, BRAKE_PREVENT_MOTION);
-            //sleep((BK_DELAY/1000)+3);
             myNode.EnableReq(false);
             sleep(1);
         }
@@ -99,7 +97,7 @@ int main(int argc, char* argv[])
 {
     //msgUser("Motion Server starting. Press Enter to continue.");
 
-size_t portCount = 0;
+	size_t portCount = 0;
     std::vector<std::string> comHubPorts;
     
     //Create the SysManager object. This object will coordinate actions among various ports
@@ -143,7 +141,7 @@ size_t portCount = 0;
         sleep(1);
         printf ("Second brake AUTOCONTROL\n");
         myPort.BrakeControl.BrakeSetting(1, BRAKE_AUTOCONTROL);
-        sleep (2);
+        sleep (1);
         
         
         //Once the code gets past this point, it can be assumed that the Port has been opened without issue
@@ -152,9 +150,9 @@ size_t portCount = 0;
         for (size_t iNode = 0; iNode < myPort.NodeCount(); iNode++) {
             // Create a shortcut reference for a node
             INode &theNode = myPort.Nodes(iNode);
-            theNode.EnableReq(false);               //Ensure Node is disabled before loading config file
+            //theNode.EnableReq(false);               //Ensure Node is disabled before loading config file
 
-            myMgr->Delay(500);
+            myMgr->Delay(200);
             
             theNode.Status.RT.Refresh();
 			theNode.Status.Alerts.Refresh();
@@ -164,7 +162,7 @@ size_t portCount = 0;
             }
             else
             {
-				char alertList[256];
+				char alertList[512];
 				char instr[1024];
 				char *retp;
 				int cont = 0;
@@ -198,7 +196,7 @@ size_t portCount = 0;
             myMgr->Delay(1200);
             theNode.EnableReq(true);                    //Enable node 
             //At this point the node is enabled
-            printf("Node \t%zi enabled\n", iNode);
+            printf("Node \t%zi enable request pending\n", iNode);
             double timeout = myMgr->TimeStampMsec() + TIME_TILL_TIMEOUT;    //define a timeout in case the node is unable to enable
                                                                         //This will loop checking on the Real time values of the node's Ready status
             while (!theNode.Motion.IsReady()) {
@@ -212,6 +210,7 @@ size_t portCount = 0;
                     return -2;
                 }
             }
+            printf("Node %zi enabled\n", iNode);
             theNode.Motion.MoveWentDone();                      //Clear the rising edge Move done register
             theNode.AccUnit(INode::RPM_PER_SEC);                //Set the units for Acceleration to RPM/SEC
             theNode.VelUnit(INode::RPM);                        //Set the units for Velocity to RPM
