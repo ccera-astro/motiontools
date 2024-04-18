@@ -537,15 +537,11 @@ public:
         IPort &myPort = Manager->Ports(0);
         INode &myNode = myPort.Nodes(0);
         INode &myNode2 = myPort.Nodes(1);
-        myPort.BrakeControl.BrakeSetting(0, BRAKE_PREVENT_MOTION);
-        sleep(1);
-        myPort.BrakeControl.BrakeSetting(1, BRAKE_PREVENT_MOTION);
-        sleep(1);
 
         myNode.EnableReq(false);
         sleep(1);
         myNode2.EnableReq(false);
-        sleep(2);
+        sleep(1);
 
         Manager->PortsClose();
         alarm(2);
