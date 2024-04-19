@@ -55,7 +55,7 @@ DEG_MINUTE = 0.25
 #
 # Soft limits for motion
 #
-ELEVATION_LIMITS = (0.5,91.5)
+ELEVATION_LIMITS = (0.5,88.5)
 AZIMUTH_LIMITS = (1.0,359.0)
 
 #
@@ -305,14 +305,14 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
     return ((el_slew,az_slew))
 
 def exit_motion_server():
-	global rpc
-	
-	rpc.SysExit(0)
-	
+    global rpc
+    
+    rpc.SysExit(0)
+    
 def my_exit(rc,sexit):
     if (sexit):
         exit_motion_server()
-    sleep(1)
+    time.sleep(1)
     exit(rc)
     
 #
@@ -344,6 +344,8 @@ import ctypes
 #
 def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, posonly, body,
     ptime, stime, linear):
+        
+    global gear_spin_max
 
     #
     # Prime ephem to know about our location and time
@@ -410,12 +412,12 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     #
     set_el_acclimit(1850)
     time.sleep(0.250)
-    set_el_vellimit(GEAR_SPIN_MAX)
+    set_el_vellimit(int(gear_spin_max))
 
     time.sleep(0.250)
     set_az_acclimit(1850)
     time.sleep(0.250)
-    set_az_vellimit(GEAR_SPIN_MAX)
+    set_az_vellimit(int(gear_spin_max))
 
     #
     # Forever, until we zero-in on the target
@@ -963,7 +965,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             # Compare actual-vs-computed for EL
             # Correct if out of tolerance range
             #
-            el_ratio = real_el / tmp_el
+            el_ratio = actual_el / tmp_el
             if (el_ratio <= 0.98 or el_ratio >= 1.02):
                 correct_el = 1.0 / el_ratio
             
@@ -971,7 +973,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             # Compare actual-vs-computed for AZ
             # Correct if out of tolerance range
             #
-            az_ratio = real_az / tmp_az
+            az_ratio = actual_az / tmp_az
             if (az_ratio <= 0.98 or az_ratio >= 1.02):
                 correct_az = 1.0 / az_ratio
         #
@@ -1039,10 +1041,12 @@ def main():
     parser.add_argument ("--simulate", action="store_true", default=False, help="Simulate only, no motors or sensors")
     parser.add_argument ("--stuttered", action="store_true", default=False, help="Stuttered tracking")
     parser.add_argument ("--serverexit", action="store_true", default=False, help="Exit motor server when done")
+
     args = parser.parse_args()
 
     gear_spin_max = args.speedlimit
-
+    
+    
     #
     # We talk to the motors (MotionServer) via XMLRPC
     #

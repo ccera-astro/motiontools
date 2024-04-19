@@ -150,9 +150,7 @@ int main(int argc, char* argv[])
         for (size_t iNode = 0; iNode < myPort.NodeCount(); iNode++) {
             // Create a shortcut reference for a node
             INode &theNode = myPort.Nodes(iNode);
-            //theNode.EnableReq(false);               //Ensure Node is disabled before loading config file
-
-            myMgr->Delay(200);
+            myMgr->Delay(500);
             
             theNode.Status.RT.Refresh();
 			theNode.Status.Alerts.Refresh();
