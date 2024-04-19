@@ -15,7 +15,7 @@ options:
     max_nouts: '0'
     output_language: python
     placement: (0,0)
-    qt_qss_theme: /home/mleech/dish_ctl.qss
+    qt_qss_theme: qss_file
     realtime_scheduling: ''
     run: 'True'
     run_command: '{python} -u {filename}'
@@ -427,6 +427,19 @@ blocks:
     coordinate: [400, 28.0]
     rotation: 0
     state: true
+- name: import_55
+  id: import
+  parameters:
+    alias: ''
+    comment: ''
+    imports: import os
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [224, 84.0]
+    rotation: 0
+    state: true
 - name: motor_xml
   id: parameter
   parameters:
@@ -456,6 +469,23 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [728, 356.0]
+    rotation: 0
+    state: true
+- name: qss_file
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: QSS FILE
+    short_id: ''
+    type: str
+    value: os.environ['HOME']+"/"+"dish_ctl.qss"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [736, 596.0]
     rotation: 0
     state: true
 - name: scadence
