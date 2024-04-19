@@ -1059,7 +1059,7 @@ def main():
     parser.add_argument ("--acclimit", type=int, default=ACC_LIMIT, help="Acceleration limit, RPM/SEC")
     parser.add_argument ("--speedlimit", type=float, default=GEAR_SPIN_MAX, help="Motor speed limit")
     parser.add_argument ("--proplimit", type=float, default=PROP_LIMIT, help="Proportional boundary")
-    parser.add_argument ("--tinterval", type=float, default=10.0, help="Tracking update interval, seconds")
+    parser.add_argument ("--tinterval", type=float, default=15.0, help="Tracking update interval, seconds")
     parser.add_argument ("--trackonly", action="store_true", default=False, help="Only track, no slew")
     parser.add_argument ("--simulate", action="store_true", default=False, help="Simulate only, no motors or sensors")
     parser.add_argument ("--stuttered", action="store_true", default=False, help="Stuttered tracking")
