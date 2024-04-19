@@ -2,12 +2,12 @@
 import math
 import os
 import sys
-import ephem
 import datetime
 import time
 import xmlrpc.client as xml
 import argparse
 import traceback
+import ephem
 
 #
 # Establish some constants
@@ -224,7 +224,7 @@ def track_rate(declination):
 QUANTUM=15
 def proportional_speed(pdiff,lim,linear):
     global gear_spin_max
-    if (linear == False):
+    if (linear is False):
         v1 = lim-pdiff
         v2 = gear_spin_max/(1+1.35*(v1*v1))
         v2 = int(int(v2/QUANTUM) * QUANTUM)
@@ -284,6 +284,8 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
         el_slew = gear_spin_max
     else:
         el_slew = proportional_speed(abs(targ_el - cur_el), prop_limit, linear)
+        if (el_slew < dps_to_rpm(0.025, ELEV_RATIO)):
+            el_slew = dps_to_rpm(0.025, ELEV_RATIO)
     #
     # Compute for azimuth
     # Azimuth moves faster than elevation, so adjust the resulting curve
@@ -293,6 +295,8 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
         az_slew = gear_spin_max
     else:
         az_slew = proportional_speed(abs(targ_az - cur_az), prop_limit*1.25, linear)
+        if (az_slew < dps_to_rpm(0.025, AZIM_RATIO)):
+            az_slew = dps_to_rpm(0.025, AZIM_RATIO)
 
     #
     # Adjust sign
@@ -362,7 +366,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     #  celestial coordinate
     #
     local.date = ephem.now()
-    if (body == None):
+    if (body is None):
         v = ephem.FixedBody()
         e = ephem.Equatorial(to_ephem_coord(t_ra), to_ephem_coord(t_dec))
         v._ra = e.ra
@@ -428,7 +432,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         # Looks like down below, we have stopped motion on both
         #  axes--we exit this loop when this happens
         #
-        if (az_running == False and el_running == False):
+        if (az_running is False and el_running is False):
             set_az_speed(0.0)
             set_el_speed(0.0)
             break
@@ -441,7 +445,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #
         # If not an absolute move
         #
-        if (absolute == False):
+        if (absolute is False):
             local.date = ephem.now()
             v.compute(local)
             t_az = from_ephem_coord("%s" % v.az) + azoffset
@@ -471,7 +475,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
             set_az_speed(0.0)
             limits = True
 
-        if (limits == True):
+        if (limits is True):
             break
 
         #
@@ -481,10 +485,10 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         cur_el = axes[0]
         cur_az = axes[1]
 
-        if (cur_el < 0.0 or cur_el > 91.0):
+        if (cur_el < 0.5 or cur_el > 88.0):
             limits = True
             break
-        if (cur_az < 1.0 or cur_az > 359.5):
+        if (cur_az < 1.5 or cur_az > 358.5):
             limits = True
             break
 
@@ -500,12 +504,12 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #  away.
         #
         if (abs(cur_el - t_el) >= 0.14):
-            if (el_running == False):
+            if (el_running is False):
                 last_time_sensors = time.time()
             el_running = True
 
         if (abs(cur_az - t_az) >= 0.14):
-            if (az_running == False):
+            if (az_running is False):
                 last_time_sensors = time.time()
             az_running = True
 
@@ -535,7 +539,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         # Update commanded motor speed if desired rate is different from
         #   current rate
         #
-        if ((el_running == True) and (el_speed != slew_tuple[0])):
+        if ((el_running is True) and (el_speed != slew_tuple[0])):
             el_speed = slew_tuple[0]
             r = set_el_speed(el_speed)
             if (r != 0):
@@ -543,7 +547,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
                 rv = False
                 break
 
-        if ((az_running == True) and (az_speed != slew_tuple[1])):
+        if ((az_running is True) and (az_speed != slew_tuple[1])):
             az_speed = slew_tuple[1]
             r = set_az_speed(az_speed)
             if (r != 0):
@@ -563,12 +567,12 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #
         if ((time.time() - last_time_sensors) >= stime):
             last_time_sensors = time.time()
-            if (az_running == True and az_speed > 0.0 and abs(cur_az-cmp_az) <= 0.0):
+            if (az_running is True and az_speed > 0.0 and abs(cur_az-cmp_az) <= 0.0):
                 print ("AZ: apparently not spinning or encoder failure")
                 set_az_speed(0.0)
                 rv = False
                 break
-            if (el_running == True and el_speed > 0.0 and abs(cur_el-cmp_el) <= 0.0):
+            if (el_running is True and el_speed > 0.0 and abs(cur_el-cmp_el) <= 0.0):
                 set_el_speed(0.0)
                 print ("EL: apparently not spinning or encoder failure")
                 rv = False
@@ -579,11 +583,11 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     #
     # No matter how we exit from this loop, make sure things are "safe"
     #
-    if (posonly == False):
+    if (posonly is False):
         set_az_speed(0.0)
         set_el_speed(0.0)
 
-    if (limits == True):
+    if (limits is True):
         print ("At least one axis limit exceeded--not proceeding")
         rv = False
 
@@ -622,7 +626,7 @@ def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, 
     #  celestial coordinate
     #
     local.date = ephem.now()
-    if (body == None):
+    if (body is None):
         v = ephem.FixedBody()
         v._ra = to_ephem_coord(t_ra)
         v._dec = to_ephem_coord(t_dec)
@@ -699,8 +703,8 @@ def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, 
         #
         if (az_in_motion or el_in_motion):
             wc = 10
-            az_done = False if az_in_motion == True else True
-            el_done = False if el_in_motion == True else True
+            az_done = False if az_in_motion is True else True
+            el_done = False if el_in_motion is True else True
             while (wc > 0):
                 if (not az_done and az_in_motion and wait_az_move(0) != 0):
                     ez_done = True
@@ -715,13 +719,13 @@ def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, 
         # We wait on the axis moves, but make sure that if required, both motions
         #   are initiated in the same iteration.
         #
-        if (el_in_motion == True):
+        if (el_in_motion is True):
             wait_el_move(75)
             el_in_motion = False
             
-        if (az_in_motion == True):
+        if (az_in_motion is True):
             wait_az_move(75)
-            az_in_motion == False
+            az_in_motion is False
 
         ltp = time.gmtime()
         lfp.write ("%02d,%02d,%02d,TRACK,%f,%f,%f,%f\n" % (ltp.tm_hour,
@@ -782,7 +786,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     #  celestial coordinate
     #
     local.date = ephem.now()
-    if (body == None):
+    if (body is None):
         v = ephem.FixedBody()
         v._ra = to_ephem_coord(t_ra)
         v._dec = to_ephem_coord(t_dec)
@@ -814,7 +818,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     az_rpm = round(dps_to_rpm(az_rate, AZIM_RATIO), 1)
 
 
-    if (simulate == False):
+    if (simulate is False):
         #
         # Acceleration limits during tracking
         #
@@ -849,7 +853,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # Looks like we're done
         #
         if ((time.time() - start_time) >= tracktime):
-            if (simulate == False):
+            if (simulate is False):
                 set_az_speed(0.0)
                 set_el_speed(0.0)
             break
@@ -857,7 +861,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         #
         # We know what initial rates we need
         #
-        if (simulate == False):
+        if (simulate is False):
             if (az_rpm != prev_az_rpm):
                 r = set_az_speed(az_rpm)
                 prev_az_rpm = az_rpm
@@ -873,7 +877,17 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
                 print ("TRACK: problem setting speed %f  %08X" % (el_rpm, ctypes.c_uint(r).value))
                 rv = False
                 break
-             
+        #
+        # If the apparent required rate is much higher than astro motion would
+        #  imply...
+        #
+        if (el_rpm > dps_to_rpm(0.265/60.0, ELEV_RATIO) or
+            az_rpm > dps_to_rpm(0.265/60.0, AZIM_RATIO)):
+            print ("TRACK: required rate much greater than expected EL: %f AZ: %f" %
+                (dps(el_rpm, ELEV_RATIO), dps(az_rpm, AZIM_RATIO)))
+            rv = False
+            break
+
         #
         # Update the ephem sky coordinates
         #
@@ -894,7 +908,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         #
         # Get our current actual position
         #
-        if (simulate == False):
+        if (simulate is False):
             axes = get_both_sensors()
             cur_el = axes[0]
             cur_az = axes[1]
@@ -956,7 +970,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # The correction is used to increase/decrease the commanded motor rate
         #
         #
-        if (simulate == False):
+        if (simulate is False):
             posns = get_both_sensors()
             actual_el = posns[0]
             actual_az = posns[1]
@@ -982,6 +996,15 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         el_inst_rate = (tmp_el - t_el) / djd_seconds
         az_inst_rate = (tmp_az - t_az) / djd_seconds
         
+        if (correct_el > 1.25 or correct_el < 0.75):
+            print ("TRACK: el correction out of range: %f" % correct_el)
+            rv = False
+            break
+
+        if (correct_az > 1.25 or correct_el < 0.75):
+            print ("TRACK: az correction out of range: %f" % correct_az)
+            rv = False
+            break
         #
         # We fold the correction in here, and it gets smoothed along with
         #  the estimated required motor rate.
@@ -997,7 +1020,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     #
     # No matter how we exit from this loop, make sure things are "safe"
     #
-    if (simulate == False):
+    if (simulate is False):
         set_az_speed(0.0)
         set_el_speed(0.0)
 
@@ -1074,7 +1097,7 @@ def main():
     # We could use SkyField for everything, and maybe we will one day,
     #   but I think the coordinate transrorms in pyephem are still valid
     #
-    if (args.planet != None):
+    if (args.planet is not None):
         planet = args.planet.lower()
         if (planet not in planets):
             print ("No such planet %s" % args.planet)
@@ -1095,24 +1118,24 @@ def main():
     #
     # Set the global acceleration limits
     #
-    if (args.simulate == False):
+    if (args.simulate is False):
         set_el_acclimit(args.acclimit)
         time.sleep(0.5)
         set_az_acclimit(args.acclimit)
 
-    if (args.trackonly == False):
+    if (args.trackonly is False):
         try:
             if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset,
-                fp, args.absolute, args.posonly, body, args.pause, args.sanity, args.linear) != True):
+                fp, args.absolute, args.posonly, body, args.pause, args.sanity, args.linear) is not True):
                 print ("Problem encountered during slew--exiting prior to tracking")
-                if (args.simulate == False):
+                if (args.simulate is False):
                     set_el_speed(0.0)
                     set_az_speed(0.0)
                     restore_limits()
                 my_exit(1,args.serverexit)
         except Exception:
             print ("Exception raised in moveto()--setting motors to zero speed")
-            if (args.simulate == False):
+            if (args.simulate is False):
                set_el_speed(0.0)
                set_az_speed(0.0)
                restore_limits()
@@ -1120,23 +1143,23 @@ def main():
             print (traceback.format_exc())
             my_exit(1,args.serverexit)
 
-    if (args.absolute == False and (args.tracking > 0)):
+    if (args.absolute is False and (args.tracking > 0)):
         try:
             track_fcn = track_continuous
-            if (args.stuttered == True):
+            if (args.stuttered is True):
                 track_fcn = track_stuttered
             if (track_fcn(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset,
                 fp, body, args.tinterval, args.simulate)
-                != True):
+                is not True):
                 print ("Problem encountered while tracking.  Done tracking")
-                if (args.simulate == False):
+                if (args.simulate is False):
                     set_el_speed(0.0)
                     set_az_speed(0.0)
                     restore_limits()
                 my_exit(1,args.serverexit)
         except Exception:
             print ("Exception raised in track() -- setting motors to zero speed")
-            if (args.simulate == False):
+            if (args.simulate is False):
                 set_el_speed(0.0)
                 set_az_speed(0.0)
                 restore_limits()
