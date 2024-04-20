@@ -1068,7 +1068,7 @@ def main():
     args = parser.parse_args()
 
     gear_spin_max = args.speedlimit
-    
+    prop_limit = args.proplimit
     
     #
     # We talk to the motors (MotionServer) via XMLRPC
