@@ -1,0 +1,3 @@
+QLabel {
+	font-size: 20pt
+}
