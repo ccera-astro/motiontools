@@ -881,8 +881,8 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # If the apparent required rate is much higher than astro motion would
         #  imply...
         #
-        if (el_rpm > dps_to_rpm(0.265/60.0, ELEV_RATIO) or
-            az_rpm > dps_to_rpm(0.265/60.0, AZIM_RATIO)):
+        if (el_rpm > dps_to_rpm(3.0/60.0, ELEV_RATIO) or
+            az_rpm > dps_to_rpm(18.0/60.0, AZIM_RATIO)):
             print ("TRACK: required rate much greater than expected EL: %f AZ: %f" %
                 (dps(el_rpm, ELEV_RATIO), dps(az_rpm, AZIM_RATIO)))
             rv = False
