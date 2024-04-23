@@ -284,8 +284,8 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
         el_slew = gear_spin_max
     else:
         el_slew = proportional_speed(abs(targ_el - cur_el), prop_limit, linear)
-        if (el_slew < dps_to_rpm(0.025, ELEV_RATIO)):
-            el_slew = dps_to_rpm(0.025, ELEV_RATIO)
+        if (el_slew < dps_to_rpm(0.020, ELEV_RATIO)):
+            el_slew = dps_to_rpm(0.020, ELEV_RATIO)
     #
     # Compute for azimuth
     # Azimuth moves faster than elevation, so adjust the resulting curve
@@ -295,8 +295,8 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
         az_slew = gear_spin_max
     else:
         az_slew = proportional_speed(abs(targ_az - cur_az), prop_limit*1.25, linear)
-        if (az_slew < dps_to_rpm(0.025, AZIM_RATIO)):
-            az_slew = dps_to_rpm(0.025, AZIM_RATIO)
+        if (az_slew < dps_to_rpm(0.020, AZIM_RATIO)):
+            az_slew = dps_to_rpm(0.020, AZIM_RATIO)
 
     #
     # Adjust sign
@@ -881,8 +881,8 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # If the apparent required rate is much higher than astro motion would
         #  imply...
         #
-        if (el_rpm > dps_to_rpm(3.0/60.0, ELEV_RATIO) or
-            az_rpm > dps_to_rpm(18.0/60.0, AZIM_RATIO)):
+        if (el_rpm > dps_to_rpm(6.0/60.0, ELEV_RATIO) or
+            az_rpm > dps_to_rpm(18.5/60.0, AZIM_RATIO)):
             print ("TRACK: required rate much greater than expected EL: %f AZ: %f" %
                 (dps(el_rpm, ELEV_RATIO), dps(az_rpm, AZIM_RATIO)))
             rv = False
