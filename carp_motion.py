@@ -768,6 +768,22 @@ def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, 
 #
 def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body, minterval,
     simulate):
+        
+    sidt = cur_sidereal(lon,lat)
+    sidt = sidt.split(",")
+    sidh = float(sidt[0]) + float(sidt[1])/60.0 + float(sidt[2])/3600.0
+    sidupper = sidh + (tracktime/3600.0)
+    
+    #
+    # Crude test to see if this tracking request crosses the singularity region
+    #  near the Zenith.
+    #
+    if (abs(t_dec-lat) < 1.5 and
+        (t_ra >= sidh and t_ra <= sidupper)):
+        print ("ERROR: requested tracking crosses Zenith singularity")
+        rv = False
+        return
+        
 
     rv = True
     #
@@ -829,9 +845,11 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         #
         # Velocity limits during tracking
         #
-        set_az_vellimit(600)
+        # Close to the Zenith, tracking rates become eye-watering
+        #
+        set_az_vellimit(gear_spin_max)
         time.sleep(0.25)
-        set_el_vellimit(600)
+        set_el_vellimit(gear_spin_max)
 
         time.sleep(0.250)
 
