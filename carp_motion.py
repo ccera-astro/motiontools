@@ -773,16 +773,6 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     sidt = sidt.split(",")
     sidh = float(sidt[0]) + float(sidt[1])/60.0 + float(sidt[2])/3600.0
     sidupper = sidh + (tracktime/3600.0)
-    
-    #
-    # Crude test to see if this tracking request crosses the singularity region
-    #  near the Zenith.
-    #
-    if (abs(t_dec-lat) < 1.5 and
-        (t_ra >= sidh and t_ra <= sidupper)):
-        print ("ERROR: requested tracking crosses Zenith singularity")
-        rv = False
-        return
         
 
     rv = True
@@ -817,10 +807,21 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     v.compute(local)
     initial_az = from_ephem_coord("%s" % v.az)
     initial_el = from_ephem_coord("%s" % v.alt)
+    
+        
+    #
+    # Crude test to see if this tracking request crosses the singularity region
+    #  near the Zenith.
+    #
+    if (abs(v.g_dec-lat) < 1.5 and
+        (v.g_ra >= sidh and v.g_ra <= sidupper)):
+        print ("ERROR: requested tracking crosses Zenith singularity")
+        rv = False
+        return
 
     local.date = ephem.now() + (float(minterval)/86400.0)
     v.compute(local)
-
+ 
     later_az = from_ephem_coord("%s" % v.az)
     later_el = from_ephem_coord("%s" % v.alt)
 
