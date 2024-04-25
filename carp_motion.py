@@ -111,19 +111,19 @@ def wait_el_move(count):
 
 def set_el_acclimit(limit):
     global rpc
-    return rpc.AccLimit(0,limit)
+    return rpc.AccLimit(0,int(limit))
 
 def set_az_acclimit(limit):
     global rpc
-    return rpc.AccLimit(1,limit)
+    return rpc.AccLimit(1,int(limit))
 
 def set_el_vellimit(limit):
     global rpc
-    return rpc.VelLimit(0,limit)
+    return rpc.VelLimit(0,int(limit))
 
 def set_az_vellimit(limit):
     global rpc
-    return rpc.VelLimit(1,limit)
+    return rpc.VelLimit(1,int(limit))
 #
 # Sensor interface
 #
