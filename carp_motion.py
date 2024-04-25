@@ -505,12 +505,12 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #  "close" at the start, but if we stop, it will drift further
         #  away.
         #
-        if (abs(cur_el - t_el) >= 0.14):
+        if (abs(cur_el - t_el) >= 0.12):
             if (el_running is False):
                 last_time_sensors = time.time()
             el_running = True
 
-        if (abs(cur_az - t_az) >= 0.14):
+        if (abs(cur_az - t_az) >= 0.12):
             if (az_running is False):
                 last_time_sensors = time.time()
             az_running = True
@@ -518,7 +518,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #
         # We haved reached the object in elevation--zero speed
         #
-        if (abs(cur_el - t_el) <= 0.07):
+        if (abs(cur_el - t_el) <= 0.06):
             set_el_speed(0.0)
             el_speed = 0.0
             el_running = False
@@ -526,7 +526,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #
         # We have reached the object in azimuth--zero speed
         #
-        if (abs(cur_az - t_az) <= 0.07):
+        if (abs(cur_az - t_az) <= 0.06):
             set_az_speed(0.0)
             az_speed = 0.0
             az_running = False
@@ -1084,7 +1084,7 @@ def main():
     parser.add_argument ("--acclimit", type=int, default=ACC_LIMIT, help="Acceleration limit, RPM/SEC")
     parser.add_argument ("--speedlimit", type=float, default=GEAR_SPIN_MAX, help="Motor speed limit")
     parser.add_argument ("--proplimit", type=float, default=PROP_LIMIT, help="Proportional boundary")
-    parser.add_argument ("--tinterval", type=float, default=15.0, help="Tracking update interval, seconds")
+    parser.add_argument ("--tinterval", type=float, default=10.0, help="Tracking update interval, seconds")
     parser.add_argument ("--trackonly", action="store_true", default=False, help="Only track, no slew")
     parser.add_argument ("--simulate", action="store_true", default=False, help="Simulate only, no motors or sensors")
     parser.add_argument ("--stuttered", action="store_true", default=False, help="Stuttered tracking")
