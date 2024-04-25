@@ -284,8 +284,8 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
         el_slew = gear_spin_max
     else:
         el_slew = proportional_speed(abs(targ_el - cur_el), prop_limit, linear)
-        if (el_slew < dps_to_rpm(0.020, ELEV_RATIO)):
-            el_slew = dps_to_rpm(0.020, ELEV_RATIO)
+        if (el_slew < dps_to_rpm(0.03, ELEV_RATIO)):
+            el_slew = dps_to_rpm(0.03, ELEV_RATIO)
     #
     # Compute for azimuth
     # Azimuth moves faster than elevation, so adjust the resulting curve
@@ -295,8 +295,8 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
         az_slew = gear_spin_max
     else:
         az_slew = proportional_speed(abs(targ_az - cur_az), prop_limit*1.25, linear)
-        if (az_slew < dps_to_rpm(0.020, AZIM_RATIO)):
-            az_slew = dps_to_rpm(0.020, AZIM_RATIO)
+        if (az_slew < dps_to_rpm(0.035, AZIM_RATIO)):
+            az_slew = dps_to_rpm(0.035, AZIM_RATIO)
 
     #
     # Adjust sign
@@ -410,6 +410,8 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     cmp_el = cmp_axes[0]
     cmp_az = cmp_axes[1]
     time.sleep(ptime)
+    cur_el = cmp_el
+    cur_az = cmp_az
 
     #
     # Set limits speed/accel limits
@@ -456,7 +458,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
                     (t_az, t_el, t_ra, t_dec))
                 rv = False
                 break
-            print ("Converging on AZ %f  EL %f" % (t_az, t_el))
+            print ("Converging on AZ %f  EL %f CUR AZ %f CUR EL %f" % (t_az, t_el, cur_el, cur_az))
         #
         # Else t_az and t_el will just be what they were at the top of this function
         #
@@ -864,7 +866,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     #
     # Smoothing for rate estimates
     #
-    alpha = 0.3
+    alpha = 0.5
     beta = 1.0 - alpha
     
     prev_az_rpm = 9999.0
@@ -938,9 +940,11 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             cur_az = 180.0
 
         ltp = time.gmtime()
-        lfp.write ("%02d,%02d,%02d,TRACK,%f,%f,%f,%f,%f,%f,%f,%f\n" % (ltp.tm_hour,
-            ltp.tm_min, ltp.tm_sec, t_az, t_el, cur_az, cur_el, az_rpm, el_rpm, az_rate, el_rate))
+        thestring = "%02d,%02d,%02d,TRACK,%f,%f,%f,%f,%f,%f,%f,%f\n" % (ltp.tm_hour,
+            ltp.tm_min, ltp.tm_sec, t_az, t_el, cur_az, cur_el, az_rpm, el_rpm, az_rate, el_rate)
+        lfp.write (thestring)
         lfp.flush()
+        sys.stderr.write(thestring)
 
         if (cur_el < ELEVATION_LIMITS[0] or cur_el > ELEVATION_LIMITS[1]):
             print ("Elevation position limit exceeded (%f).  Halting tracking" % cur_el)
@@ -1001,7 +1005,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             # Correct if out of tolerance range
             #
             el_ratio = actual_el / tmp_el
-            if (el_ratio <= 0.98 or el_ratio >= 1.02):
+            if (el_ratio <= 0.99 or el_ratio >= 1.01):
                 correct_el = 1.0 / el_ratio
             
             #
@@ -1009,7 +1013,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             # Correct if out of tolerance range
             #
             az_ratio = actual_az / tmp_az
-            if (az_ratio <= 0.98 or az_ratio >= 1.02):
+            if (az_ratio <= 0.99 or az_ratio >= 1.01):
                 correct_az = 1.0 / az_ratio
         #
         # We've gone to sleep for a bit, compute new rates
@@ -1188,7 +1192,7 @@ def main():
             print(traceback.format_exc())
             my_exit(1,args.serverexit)
     fp.close()
-    exit_motion_server()
+    my_exit(0,args.serverexit)
 
 if __name__ == '__main__':
     main()
