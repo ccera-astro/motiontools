@@ -813,8 +813,10 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     # Crude test to see if this tracking request crosses the singularity region
     #  near the Zenith.
     #
-    if (abs(v.g_dec-lat) < 1.5 and
-        (v.g_ra >= sidh and v.g_ra <= sidupper)):
+    geo_ra = from_ephem_coord("%s" % v.g_ra)
+    geo_dec = from_ephem_coord("%s" % v.g_dec)
+    if (abs(geo_dec-lat) < 1.5 and
+        (geo_ra >= sidh and geo_ra <= sidupper)):
         print ("ERROR: requested tracking crosses Zenith singularity")
         rv = False
         return
