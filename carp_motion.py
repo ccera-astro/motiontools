@@ -835,8 +835,8 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     #
     # We need to convert from degrees/second into RPM
     #
-    el_rpm = round(dps_to_rpm(el_rate, ELEV_RATIO), 1)
-    az_rpm = round(dps_to_rpm(az_rate, AZIM_RATIO), 1)
+    el_rpm = round(dps_to_rpm(el_rate, ELEV_RATIO), 2)
+    az_rpm = round(dps_to_rpm(az_rate, AZIM_RATIO), 2)
 
 
     if (simulate is False):
@@ -1040,8 +1040,8 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         #
         # Convert to motor-shaft RPM
         #
-        el_rpm = round(dps_to_rpm(el_rate, ELEV_RATIO), 1)
-        az_rpm = round(dps_to_rpm(az_rate, AZIM_RATIO), 1)
+        el_rpm = round(dps_to_rpm(el_rate, ELEV_RATIO), 2)
+        az_rpm = round(dps_to_rpm(az_rate, AZIM_RATIO), 2)
     #
     # No matter how we exit from this loop, make sure things are "safe"
     #
