@@ -1005,28 +1005,26 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             # Correct if out of tolerance range
             #
             el_ratio = actual_el / tmp_el
-            if (el_ratio <= 0.99 or el_ratio >= 1.01):
-                correct_el = 1.0 / el_ratio
+            correct_el = 1.0 / el_ratio
             
             #
             # Compare actual-vs-computed for AZ
             # Correct if out of tolerance range
             #
             az_ratio = actual_az / tmp_az
-            if (az_ratio <= 0.99 or az_ratio >= 1.01):
-                correct_az = 1.0 / az_ratio
+            correct_az = 1.0 / az_ratio
         #
         # We've gone to sleep for a bit, compute new rates
         #
         el_inst_rate = (tmp_el - t_el) / djd_seconds
         az_inst_rate = (tmp_az - t_az) / djd_seconds
         
-        if (correct_el > 1.25 or correct_el < 0.75):
+        if (correct_el > 1.10 or correct_el < 0.9):
             print ("TRACK: el correction out of range: %f" % correct_el)
             rv = False
             break
 
-        if (correct_az > 1.25 or correct_el < 0.75):
+        if (correct_az > 1.1 or correct_el < 0.9):
             print ("TRACK: az correction out of range: %f" % correct_az)
             rv = False
             break

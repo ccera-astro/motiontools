@@ -546,7 +546,7 @@ blocks:
     comment: ''
     dotColor: ro
     gui_hint: 3,0,3,4
-    label: TELESCOPE POSITION
+    label: TELESCOPE  <N>  POSITION
   states:
     bus_sink: false
     bus_source: false
