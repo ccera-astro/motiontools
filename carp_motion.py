@@ -1019,7 +1019,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         el_inst_rate = (tmp_el - t_el) / djd_seconds
         az_inst_rate = (tmp_az - t_az) / djd_seconds
         
-        if (correct_el > 1.10 or correct_el < 0.9):
+        if (correct_el > 1.1 or correct_el < 0.9):
             print ("TRACK: el correction out of range: %f" % correct_el)
             rv = False
             break
