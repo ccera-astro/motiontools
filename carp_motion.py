@@ -866,11 +866,12 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     #
     # Smoothing for rate estimates
     #
-    alpha = 0.5
+    alpha = 0.35
     beta = 1.0 - alpha
     
     prev_az_rpm = 9999.0
     prev_el_rpm = 9999.0
+    corr_count = 0
     while True:
         #
         # Looks like we're done
@@ -995,7 +996,8 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # The correction is used to increase/decrease the commanded motor rate
         #
         #
-        if (simulate is False):
+        if (simulate is False and corr_cnt >= 5):
+            corr_cnt = 0
             posns = get_both_sensors()
             actual_el = posns[0]
             actual_az = posns[1]
@@ -1005,6 +1007,11 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             # Correct if out of tolerance range
             #
             el_ratio = actual_el / tmp_el
+
+            #
+            # Make sure the correction "sense" is appropriate
+            #   for the direction of motion
+            #
             if (el_rpm >= 0):
                 correct_el = 1.0 / el_ratio
             
@@ -1013,8 +1020,16 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             # Correct if out of tolerance range
             #
             az_ratio = actual_az / tmp_az
+            
+            #
+            # Make sure the correction "sense" is appropriate
+            #   for the directon of motion.
+            #
             if (az_rpm >= 0):
                 correct_az = 1.0 / az_ratio
+
+        corr_cnt +=1
+        
         #
         # We've gone to sleep for a bit, compute new rates
         #
