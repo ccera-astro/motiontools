@@ -1005,14 +1005,16 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             # Correct if out of tolerance range
             #
             el_ratio = actual_el / tmp_el
-            correct_el = 1.0 / el_ratio
+            if (el_rpm >= 0):
+                correct_el = 1.0 / el_ratio
             
             #
             # Compare actual-vs-computed for AZ
             # Correct if out of tolerance range
             #
             az_ratio = actual_az / tmp_az
-            correct_az = 1.0 / az_ratio
+            if (az_rpm >= 0):
+                correct_az = 1.0 / az_ratio
         #
         # We've gone to sleep for a bit, compute new rates
         #
