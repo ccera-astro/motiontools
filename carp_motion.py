@@ -871,7 +871,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     
     prev_az_rpm = 9999.0
     prev_el_rpm = 9999.0
-    corr_count = 0
+    corr_cnt = 0
     while True:
         #
         # Looks like we're done
