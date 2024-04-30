@@ -449,7 +449,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    alpha: 1.0/(samp_rate/3.0)
+    alpha: 1.0/(samp_rate*3.0)
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -467,7 +467,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    alpha: 1.0/(samp_rate/3.0)
+    alpha: 1.0/(samp_rate*3.0)
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
