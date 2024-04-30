@@ -505,12 +505,12 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #  "close" at the start, but if we stop, it will drift further
         #  away.
         #
-        if (abs(cur_el - t_el) >= 0.12):
+        if (abs(cur_el - t_el) >= 0.10):
             if (el_running is False):
                 last_time_sensors = time.time()
             el_running = True
 
-        if (abs(cur_az - t_az) >= 0.12):
+        if (abs(cur_az - t_az) >= 0.10):
             if (az_running is False):
                 last_time_sensors = time.time()
             az_running = True
@@ -610,7 +610,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
 #
 # Returns: True for success False otherwise
 #
-def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body, minterval, sim):
+def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body, minterval, sim, gerror):
 
     rv = True
     #
@@ -753,6 +753,11 @@ def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, 
 
     return rv
 
+def gain(x,coeff):
+    if (x < 1.0):
+        return(x/coeff)
+    else:
+        return(x*coeff)
 #
 # Rate-based (continuous) tracking
 #
@@ -769,7 +774,7 @@ def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, 
 # Returns: True for success False otherwise
 #
 def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body, minterval,
-    simulate):
+    simulate,gerror):
         
     sidt = cur_sidereal(lon,lat)
     sidt = sidt.split(",")
@@ -996,7 +1001,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # The correction is used to increase/decrease the commanded motor rate
         #
         #
-        if (simulate is False and corr_cnt >= 5):
+        if (simulate is False and corr_cnt >= 3):
             corr_cnt = 0
             posns = get_both_sensors()
             actual_el = posns[0]
@@ -1036,12 +1041,12 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         el_inst_rate = (tmp_el - t_el) / djd_seconds
         az_inst_rate = (tmp_az - t_az) / djd_seconds
         
-        if (correct_el > 1.1 or correct_el < 0.9):
+        if (correct_el > 1.2 or correct_el < 0.8):
             print ("TRACK: el correction out of range: %f" % correct_el)
             rv = False
             break
 
-        if (correct_az > 1.1 or correct_el < 0.9):
+        if (correct_az > 1.2 or correct_el < 0.8):
             print ("TRACK: az correction out of range: %f" % correct_az)
             rv = False
             break
@@ -1049,8 +1054,8 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # We fold the correction in here, and it gets smoothed along with
         #  the estimated required motor rate.
         #
-        el_rate = (alpha * el_inst_rate * correct_el) + (beta * el_rate)
-        az_rate = (alpha * az_inst_rate * correct_az) + (beta * az_rate)
+        el_rate = (alpha * el_inst_rate * gain(correct_el,gerror)) + (beta * el_rate)
+        az_rate = (alpha * az_inst_rate * gain(correct_az,gerror)) + (beta * az_rate)
 
         #
         # Convert to motor-shaft RPM
@@ -1104,6 +1109,7 @@ def main():
     parser.add_argument ("--simulate", action="store_true", default=False, help="Simulate only, no motors or sensors")
     parser.add_argument ("--stuttered", action="store_true", default=False, help="Stuttered tracking")
     parser.add_argument ("--serverexit", action="store_true", default=False, help="Exit motor server when done")
+    parser.add_argument ("--gerror", type=float, default=1.0, help="Gain value for error estimate in tracking")
 
     args = parser.parse_args()
 
@@ -1173,7 +1179,7 @@ def main():
                     set_az_speed(0.0)
                     restore_limits()
                 my_exit(1,args.serverexit)
-        except Exception:
+        except:
             print ("Exception raised in moveto()--setting motors to zero speed")
             if (args.simulate is False):
                set_el_speed(0.0)
@@ -1189,7 +1195,7 @@ def main():
             if (args.stuttered is True):
                 track_fcn = track_stuttered
             if (track_fcn(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset,
-                fp, body, args.tinterval, args.simulate)
+                fp, body, args.tinterval, args.simulate,args.gerror)
                 is not True):
                 print ("Problem encountered while tracking.  Done tracking")
                 if (args.simulate is False):
@@ -1197,7 +1203,7 @@ def main():
                     set_az_speed(0.0)
                     restore_limits()
                 my_exit(1,args.serverexit)
-        except Exception:
+        except:
             print ("Exception raised in track() -- setting motors to zero speed")
             if (args.simulate is False):
                 set_el_speed(0.0)
