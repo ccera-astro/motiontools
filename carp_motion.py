@@ -877,6 +877,13 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     prev_az_rpm = 9999.0
     prev_el_rpm = 9999.0
     corr_cnt = 0
+           
+    #
+    # Initial correction values
+    #
+    correct_el = 1.0
+    correct_az = 1.0
+    
     while True:
         #
         # Looks like we're done
@@ -988,12 +995,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         #
         djd_seconds = new_djd - old_djd
         djd_seconds *= 86400.0
-        
-        #
-        # If no correction necessary
-        #
-        correct_el = 1.0
-        correct_az = 1.0
+ 
         
         #
         # Compute a correction based on discrepency in computed-vs-actual
