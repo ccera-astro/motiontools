@@ -991,6 +991,14 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         tmp_az = from_ephem_coord("%s" % v.az)
         
         #
+        # Peer into the future a bit
+        #
+        local.date = ephem.now() + (float(minterval) / 86400.0)
+        v.compute(local)
+        future_el = from_ephem_coord("%s" % v.alt)
+        future_az = from_ephem_coord("%s" % v.az)
+        
+        #
         # Compute DJD time difference between two ephem computes
         #
         djd_seconds = new_djd - old_djd
@@ -1037,21 +1045,32 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
 
         corr_cnt +=1
         
+        if (correct_el > 1.2 or correct_el < 0.8):
+            print ("TRACK: el correction out of range: %f" % correct_el)
+            rv = False
+            break
+
+        if (correct_az > 1.2 or correct_az < 0.8):
+            print ("TRACK: az correction out of range: %f" % correct_az)
+            rv = False
+            break
+        
+        
         #
         # We've gone to sleep for a bit, compute new rates
         #
         el_inst_rate = (tmp_el - t_el) / djd_seconds
         az_inst_rate = (tmp_az - t_az) / djd_seconds
         
-        if (correct_el > 1.2 or correct_el < 0.8):
-            print ("TRACK: el correction out of range: %f" % correct_el)
-            rv = False
-            break
-
-        if (correct_az > 1.2 or correct_el < 0.8):
-            print ("TRACK: az correction out of range: %f" % correct_az)
-            rv = False
-            break
+        #
+        # Average in "future" rate requirement
+        #
+        el_inst_rate += (future_el - tmp_el) / djd_seconds
+        el_inst_rate /= 2.0
+        
+        az_inst_rate += (future_az - tmp_az) / djd_seconds
+        az_inst_rate /= 2.0
+  
         #
         # We fold the correction in here, and it gets smoothed along with
         #  the estimated required motor rate.
