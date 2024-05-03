@@ -10,6 +10,11 @@ import traceback
 import ephem
 
 #
+# Target error when slewing
+#
+SERROR = 0.05
+
+#
 # Establish some constants
 #
 LATITUDE = 45.3491
@@ -347,7 +352,7 @@ import ctypes
 # Returns: True for success False otherwise
 #
 def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, posonly, body,
-    ptime, stime, linear):
+    ptime, stime, linear, serror):
         
     global gear_spin_max
 
@@ -505,12 +510,12 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #  "close" at the start, but if we stop, it will drift further
         #  away.
         #
-        if (abs(cur_el - t_el) >= 0.10):
+        if (abs(cur_el - t_el) >= serror*2.0):
             if (el_running is False):
                 last_time_sensors = time.time()
             el_running = True
 
-        if (abs(cur_az - t_az) >= 0.10):
+        if (abs(cur_az - t_az) >= serror*2.0):
             if (az_running is False):
                 last_time_sensors = time.time()
             az_running = True
@@ -518,7 +523,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #
         # We haved reached the object in elevation--zero speed
         #
-        if (abs(cur_el - t_el) <= 0.06):
+        if (abs(cur_el - t_el) <= serror):
             set_el_speed(0.0)
             el_speed = 0.0
             el_running = False
@@ -526,7 +531,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #
         # We have reached the object in azimuth--zero speed
         #
-        if (abs(cur_az - t_az) <= 0.06):
+        if (abs(cur_az - t_az) <= serror):
             set_az_speed(0.0)
             az_speed = 0.0
             az_running = False
@@ -1131,6 +1136,7 @@ def main():
     parser.add_argument ("--stuttered", action="store_true", default=False, help="Stuttered tracking")
     parser.add_argument ("--serverexit", action="store_true", default=False, help="Exit motor server when done")
     parser.add_argument ("--gerror", type=float, default=1.0, help="Gain value for error estimate in tracking")
+    parser.add_argument ("--serror", type=float, default=SERROR, help="Error target during slewing")
 
     args = parser.parse_args()
 
@@ -1193,7 +1199,7 @@ def main():
     if (args.trackonly is False):
         try:
             if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset,
-                fp, args.absolute, args.posonly, body, args.pause, args.sanity, args.linear) is not True):
+                fp, args.absolute, args.posonly, body, args.pause, args.sanity, args.linear, args.serror) is not True):
                 print ("Problem encountered during slew--exiting prior to tracking")
                 if (args.simulate is False):
                     set_el_speed(0.0)
