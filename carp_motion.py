@@ -1137,6 +1137,7 @@ def main():
     parser.add_argument ("--serverexit", action="store_true", default=False, help="Exit motor server when done")
     parser.add_argument ("--gerror", type=float, default=1.0, help="Gain value for error estimate in tracking")
     parser.add_argument ("--serror", type=float, default=SERROR, help="Error target during slewing")
+    parser.add_argument ("--galactic", action="store_true", default=False, help="RA/DEC are galactic long/lat")
 
     args = parser.parse_args()
 
@@ -1180,7 +1181,11 @@ def main():
             body.compute(ephem.now())
             tra = from_ephem_coord(str(body.ra))
             tdec = from_ephem_coord(str(body.dec))
-
+    if (args.galactic is True):
+        equ = ephem.Equatorial(ephem.Galactic(math.radians(args.ra), math.radians(args.dec)))
+        tra = math.degrees(equ.ra)
+        tdec = math.degrees(equ.dec)
+        
     ltp = time.gmtime()
     ts = "%04d%02d%02d" % (ltp.tm_year, ltp.tm_mon, ltp.tm_mday)
 
