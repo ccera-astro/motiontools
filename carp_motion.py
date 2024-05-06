@@ -279,18 +279,25 @@ prop_limit = PROP_LIMIT
 #
 # Returns:  (el_slew, az_slew)   slew speeds in decimal-float
 #
-def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
+def slew_rate(targ_el, targ_az, cur_el, cur_az, linear, frate_el, frate_az):
     global gear_spin_max
     global prop_limit
     #
     # Compute for elevation
+    #  For distances > "prop_limit", we are kind of "open loop"
+    #  We just spin at the maximum drive rate
+    #
     #
     if (abs(targ_el - cur_el) > prop_limit):
         el_slew = gear_spin_max
     else:
+		#
+		# This will ensure that the proportional rate will never dip below
+		#   3 times the current sky rate.  We don't want a situation where
+		#   we're moving slower than the sky, or just-barely-faster.
+		#
         el_slew = proportional_speed(abs(targ_el - cur_el), prop_limit, linear)
-        if (el_slew < dps_to_rpm(0.03, ELEV_RATIO)):
-            el_slew = dps_to_rpm(0.03, ELEV_RATIO)
+        el_slew = max(el_slew, dps_to_rpm(frate_el*3.0, ELEV_RATIO))
     #
     # Compute for azimuth
     # Azimuth moves faster than elevation, so adjust the resulting curve
@@ -299,9 +306,13 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear):
     if (abs(targ_az - cur_az) > prop_limit*1.25):
         az_slew = gear_spin_max
     else:
+		#
+		# This will ensure that the proportional rate will never dip below
+		#   3 times the current sky rate.  We don't want a situation where
+		#   we're moving slower than the sky, or just-barely-faster.
+		#
         az_slew = proportional_speed(abs(targ_az - cur_az), prop_limit*1.25, linear)
-        if (az_slew < dps_to_rpm(0.035, AZIM_RATIO)):
-            az_slew = dps_to_rpm(0.035, AZIM_RATIO)
+        az_slew = max(az_slew, dps_to_rpm(frate_az*3.0, AZIM_RATIO))
 
     #
     # Adjust sign
@@ -329,7 +340,7 @@ def my_exit(rc,sexit):
 #
 # Can be changed by command-line parameter
 #
-PAUSE_TIME = 0.5
+PAUSE_TIME = 0.333
 
 #
 # Sanity-checking interval
@@ -433,6 +444,9 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     #
     # Forever, until we zero-in on the target
     #
+    final_el_rate = 0.0
+    final_az_rate = 0.0
+
     while True:
         limits = False
         #
@@ -457,6 +471,22 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
             v.compute(local)
             t_az = from_ephem_coord("%s" % v.az) + azoffset
             t_el = from_ephem_coord("%s" % v.alt) + eloffset
+            
+            #
+            # Compute future
+            #
+            local.date = ephem.now() + (20.0 / 86400)
+            v.compute(local)
+            f_az = from_ephem_coord("%s" % v.az) + azoffset
+            f_el = from_ephem_coord("%s" % v.alt) + eloffset
+            local.date = ephem.now()
+            
+            #
+            # We use this as a rate computation near the very end of slewing
+            # 
+            final_az_rate = abs(f_az - t_az) / 20.0
+            final_el_rate = abs(f_el - t_el) / 20.0
+            
             if (posonly):
                 print ("Current LMST: %s"  % cur_sidereal(lon,lat).replace(",", ":"))
                 print ("AZ: %f EL %f for equatorial coordinate: RA %f DEC %f" %
@@ -538,9 +568,9 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
 
         #
         # Determine desired slew-rate based on relative distances on
-        #  both axes
+        #  both axes, and the actual current sky rate estimate.
         #
-        slew_tuple = slew_rate(t_el, t_az, cur_el, cur_az,linear)
+        slew_tuple = slew_rate(t_el, t_az, cur_el, cur_az,linear, final_el_rate, final_az_rate)
 
         #
         # Update commanded motor speed if desired rate is different from
@@ -1181,7 +1211,7 @@ def main():
             body.compute(ephem.now())
             tra = from_ephem_coord(str(body.ra))
             tdec = from_ephem_coord(str(body.dec))
-    if (args.galactic is True):
+    if (args.galactic is True and args.planet is None):
         equ = ephem.Equatorial(ephem.Galactic(math.radians(args.ra), math.radians(args.dec)))
         tra = math.degrees(equ.ra)
         tdec = math.degrees(equ.dec)
