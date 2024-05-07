@@ -475,7 +475,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
             #
             # Compute future
             #
-            local.date = ephem.now() + (20.0 / 86400)
+            local.date = ephem.now() + (20.0 / 86400.0)
             v.compute(local)
             f_az = from_ephem_coord("%s" % v.az) + azoffset
             f_el = from_ephem_coord("%s" % v.alt) + eloffset
@@ -569,6 +569,9 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #
         # Determine desired slew-rate based on relative distances on
         #  both axes, and the actual current sky rate estimate.
+        #  The actual current sky-rate kicks in at the bottom of the slew-rate
+        #  curve so that we're moving at least as fast as the sky is.
+        #
         #
         slew_tuple = slew_rate(t_el, t_az, cur_el, cur_az,linear, final_el_rate, final_az_rate)
 
