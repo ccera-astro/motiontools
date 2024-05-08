@@ -359,6 +359,15 @@ import ctypes
 # lat - local geo latitude in decimal-float format
 # lon - local geo longitude in decimal-float format
 # elev - local elevation in decimal/float format
+# azoffset, eloffset - fixed offsets (used for offset feeds, etc)
+# lfp - pointer to logging file object
+# absolute - move to absolute position
+# posonly - just compute positions print, and exit -- don't do any dish movement
+# body - body object from ephem for planets
+# ptime - time to pause through each iteration in the loop
+# stime - sanity-checking time to detect stuck sensors, etc
+# linear - use a linear speed-reduction model
+# serror - allowable error to declare "on-target"
 #
 # Returns: True for success False otherwise
 #
@@ -899,7 +908,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # Acceleration limits during tracking
         #
         set_az_acclimit(900)
-        time.sleep(0.25)
+        time.sleep(0.1)
         set_el_acclimit(900)
 
         #
@@ -908,10 +917,8 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # Close to the Zenith, tracking rates become eye-watering
         #
         set_az_vellimit(gear_spin_max)
-        time.sleep(0.25)
+        time.sleep(0.1)
         set_el_vellimit(gear_spin_max)
-
-        time.sleep(0.250)
 
     #
     # Mark our starting time
@@ -936,6 +943,10 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     #  the current drive direction.
     #
     rmap = {"10" : 1.05, "11" : 0.95, "01" : 1.05, "00" : 0.95}
+    
+    #
+    # Enter the control loop
+    #
     while True:
         #
         # Looks like we're done
@@ -957,7 +968,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
                 print ("TRACK: problem setting speed %f  %08X" % (az_rpm, ctypes.c_uint(r).value))
                 rv = False
                 break
-            time.sleep(0.125)
+            time.sleep(0.1)
             if (el_rpm != prev_el_rpm):
                 r = set_el_speed(el_rpm)
                 prev_el_rpm = el_rpm
