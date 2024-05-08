@@ -61,7 +61,7 @@ DEG_MINUTE = 0.25
 # Soft limits for motion
 #
 ELEVATION_LIMITS = (0.5,88.5)
-AZIMUTH_LIMITS = (1.0,359.0)
+AZIMUTH_LIMITS = (0.5,356.75)
 
 #
 # Gear spin max
@@ -291,13 +291,13 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear, frate_el, frate_az):
     if (abs(targ_el - cur_el) > prop_limit):
         el_slew = gear_spin_max
     else:
-		#
-		# This will ensure that the proportional rate will never dip below
-		#   3 times the current sky rate.  We don't want a situation where
-		#   we're moving slower than the sky, or just-barely-faster.
-		#
+        #
+        # This will ensure that the proportional rate will never dip below
+        #   4 times the current sky rate.  We don't want a situation where
+        #   we're moving slower than the sky, or just-barely-faster.
+        #
         el_slew = proportional_speed(abs(targ_el - cur_el), prop_limit, linear)
-        el_slew = max(el_slew, dps_to_rpm(frate_el*3.0, ELEV_RATIO))
+        el_slew = max(el_slew, dps_to_rpm(frate_el*4.0, ELEV_RATIO))
     #
     # Compute for azimuth
     # Azimuth moves faster than elevation, so adjust the resulting curve
@@ -306,13 +306,13 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear, frate_el, frate_az):
     if (abs(targ_az - cur_az) > prop_limit*1.25):
         az_slew = gear_spin_max
     else:
-		#
-		# This will ensure that the proportional rate will never dip below
-		#   3 times the current sky rate.  We don't want a situation where
-		#   we're moving slower than the sky, or just-barely-faster.
-		#
+        #
+        # This will ensure that the proportional rate will never dip below
+        #   4 times the current sky rate.  We don't want a situation where
+        #   we're moving slower than the sky, or just-barely-faster.
+        #
         az_slew = proportional_speed(abs(targ_az - cur_az), prop_limit*1.25, linear)
-        az_slew = max(az_slew, dps_to_rpm(frate_az*3.0, AZIM_RATIO))
+        az_slew = max(az_slew, dps_to_rpm(frate_az*4.0, AZIM_RATIO))
 
     #
     # Adjust sign
@@ -421,25 +421,27 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     #   (every SANITY_TIME seconds), to check that if there's a non-zero commanded
     #   motor speed, there is at least *some* motion over that interval.
     #
-    last_time_sensors = time.time()
-    cmp_axes = get_both_sensors()
-    cmp_el = cmp_axes[0]
-    cmp_az = cmp_axes[1]
-    time.sleep(ptime)
-    cur_el = cmp_el
-    cur_az = cmp_az
+    if (posonly is False):
+        last_time_sensors = time.time()
+        cmp_axes = get_both_sensors()
+        cmp_el = cmp_axes[0]
+        cmp_az = cmp_axes[1]
+        time.sleep(ptime)
+        cur_el = cmp_el
+        cur_az = cmp_az
 
     #
     # Set limits speed/accel limits
     #
-    set_el_acclimit(1850)
-    time.sleep(0.250)
-    set_el_vellimit(int(gear_spin_max))
+    if (posonly is False):
+        set_el_acclimit(1850)
+        time.sleep(0.250)
+        set_el_vellimit(int(gear_spin_max))
 
-    time.sleep(0.250)
-    set_az_acclimit(1850)
-    time.sleep(0.250)
-    set_az_vellimit(int(gear_spin_max))
+        time.sleep(0.250)
+        set_az_acclimit(1850)
+        time.sleep(0.250)
+        set_az_vellimit(int(gear_spin_max))
 
     #
     # Forever, until we zero-in on the target
@@ -453,10 +455,11 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         # Looks like down below, we have stopped motion on both
         #  axes--we exit this loop when this happens
         #
-        if (az_running is False and el_running is False):
-            set_az_speed(0.0)
-            set_el_speed(0.0)
-            break
+        if (posonly is False):
+            if (az_running is False and el_running is False):
+                set_az_speed(0.0)
+                set_el_speed(0.0)
+                break
 
         #
         # Update the ephem sky coordinates, which can still creep as we
@@ -487,13 +490,13 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
             final_az_rate = abs(f_az - t_az) / 20.0
             final_el_rate = abs(f_el - t_el) / 20.0
             
-            if (posonly):
+            if (posonly is True):
                 print ("Current LMST: %s"  % cur_sidereal(lon,lat).replace(",", ":"))
                 print ("AZ: %f EL %f for equatorial coordinate: RA %f DEC %f" %
                     (t_az, t_el, t_ra, t_dec))
-                rv = False
+                rv = True
                 break
-            print ("Converging on AZ %f  EL %f CUR AZ %f CUR EL %f" % (t_az, t_el, cur_el, cur_az))
+            print ("Converging on AZ %f  EL %f CUR AZ %f CUR EL %f" % (t_az, t_el, cur_az, cur_el))
         #
         # Else t_az and t_el will just be what they were at the top of this function
         #
@@ -1216,7 +1219,11 @@ def main():
             tdec = from_ephem_coord(str(body.dec))
     if (args.galactic is True and args.planet is None):
         equ = ephem.Equatorial(ephem.Galactic(math.radians(args.ra), math.radians(args.dec)))
-        tra = math.degrees(equ.ra)
+        #
+        # Ephem keeps things in hour-angle (in radians)
+        # We prefer decimalized hours-of-RA
+        #
+        tra = (math.degrees(equ.ra)/360.0)*24.0
         tdec = math.degrees(equ.dec)
         
     ltp = time.gmtime()
@@ -1229,7 +1236,7 @@ def main():
     #
     # Set the global acceleration limits
     #
-    if (args.simulate is False):
+    if (args.simulate is False and args.posonly is False):
         set_el_acclimit(args.acclimit)
         time.sleep(0.5)
         set_az_acclimit(args.acclimit)
@@ -1239,20 +1246,22 @@ def main():
             if (moveto(tra, tdec, args.lat, args.lon, args.elev, args.azoffset, args.eloffset,
                 fp, args.absolute, args.posonly, body, args.pause, args.sanity, args.linear, args.serror) is not True):
                 print ("Problem encountered during slew--exiting prior to tracking")
-                if (args.simulate is False):
+                if (args.simulate is False and args.posonly is False):
                     set_el_speed(0.0)
                     set_az_speed(0.0)
                     restore_limits()
-                my_exit(1,args.serverexit)
+                if (args.posonly is False and args.simulate is False):
+                    my_exit(1,args.serverexit)
         except:
             print ("Exception raised in moveto()--setting motors to zero speed")
-            if (args.simulate is False):
+            if (args.simulate is False and args.posonly is False):
                set_el_speed(0.0)
                set_az_speed(0.0)
                restore_limits()
             print ("Traceback--")
             print (traceback.format_exc())
-            my_exit(1,args.serverexit)
+            if (args.simulate is False and args.posonly is False):
+                my_exit(1,args.serverexit)
 
     if (args.absolute is False and (args.tracking > 0)):
         try:
@@ -1278,7 +1287,8 @@ def main():
             print(traceback.format_exc())
             my_exit(1,args.serverexit)
     fp.close()
-    my_exit(0,args.serverexit)
+    if (args.simulate is False and args.posonly is False):
+        my_exit(0,args.serverexit)
 
 if __name__ == '__main__':
     main()
