@@ -12,7 +12,7 @@ import ephem
 #
 # Target error when slewing
 #
-SERROR = 0.05
+SERROR = 0.04
 
 #
 # Establish some constants
@@ -263,7 +263,7 @@ def dps_to_rpm(d, ratio):
 #  the current and target position (degrees)
 # Command line can change this
 #
-PROP_LIMIT = 2.75
+PROP_LIMIT = 1.75
 prop_limit = PROP_LIMIT
 
 #
@@ -297,13 +297,13 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear, frate_el, frate_az):
         #   we're moving slower than the sky, or just-barely-faster.
         #
         el_slew = proportional_speed(abs(targ_el - cur_el), prop_limit, linear)
-        el_slew = max(el_slew, dps_to_rpm(frate_el*4.0, ELEV_RATIO))
+        el_slew = max(el_slew, dps_to_rpm(frate_el*3.0, ELEV_RATIO))
     #
     # Compute for azimuth
     # Azimuth moves faster than elevation, so adjust the resulting curve
     #  a bit.
     #
-    if (abs(targ_az - cur_az) > prop_limit*1.25):
+    if (abs(targ_az - cur_az) > prop_limit*1.333):
         az_slew = gear_spin_max
     else:
         #
@@ -311,8 +311,8 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear, frate_el, frate_az):
         #   4 times the current sky rate.  We don't want a situation where
         #   we're moving slower than the sky, or just-barely-faster.
         #
-        az_slew = proportional_speed(abs(targ_az - cur_az), prop_limit*1.25, linear)
-        az_slew = max(az_slew, dps_to_rpm(frate_az*4.0, AZIM_RATIO))
+        az_slew = proportional_speed(abs(targ_az - cur_az), prop_limit*1.333, linear)
+        az_slew = max(az_slew, dps_to_rpm(frate_az*3.0, AZIM_RATIO))
 
     #
     # Adjust sign
@@ -434,12 +434,12 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     # Set limits speed/accel limits
     #
     if (posonly is False):
-        set_el_acclimit(1850)
+        set_el_acclimit(1650)
         time.sleep(0.250)
         set_el_vellimit(int(gear_spin_max))
 
         time.sleep(0.250)
-        set_az_acclimit(1850)
+        set_az_acclimit(1650)
         time.sleep(0.250)
         set_az_vellimit(int(gear_spin_max))
 
@@ -528,7 +528,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         if (cur_el < 0.5 or cur_el > 88.0):
             limits = True
             break
-        if (cur_az < 1.5 or cur_az > 358.5):
+        if (cur_az < 1.5 or cur_az > 356.75):
             limits = True
             break
 
@@ -799,9 +799,18 @@ def gain(x,coeff):
         return(x/coeff)
     else:
         return(x*coeff)
+
+def sign(x):
+    if (x < 0):
+        sign = "1"
+    else:
+        sign = "0"
+    return(sign)
+
 #
 # Rate-based (continuous) tracking
 #
+
 
 #
 # Track target (assumes already recently moved-to)
@@ -912,19 +921,21 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     #
     # Smoothing for rate estimates
     #
-    alpha = 0.35
+    alpha = 0.4
     beta = 1.0 - alpha
     
     prev_az_rpm = 9999.0
     prev_el_rpm = 9999.0
     corr_cnt = 0
-           
-    #
-    # Initial correction values
-    #
-    correct_el = 1.0
-    correct_az = 1.0
+    el_rate_corr = 1.0
+    az_rate_corr = 1.0
     
+    #
+    # Map of rate bump for situations where we're not where we should be
+    #  Basically indexed by the sign of both the position difference and
+    #  the current drive direction.
+    #
+    rmap = {"10" : 1.05, "11" : 0.95, "01" : 1.05, "00" : 0.95}
     while True:
         #
         # Looks like we're done
@@ -1045,14 +1056,11 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         djd_seconds = new_djd - old_djd
         djd_seconds *= 86400.0
  
-        
         #
         # Compute a correction based on discrepency in computed-vs-actual
-        #   position
         # The correction is used to increase/decrease the commanded motor rate
         #
-        #
-        if (simulate is False and corr_cnt >= 3):
+        if (simulate is False and corr_cnt >= 2):
             corr_cnt = 0
             posns = get_both_sensors()
             actual_el = posns[0]
@@ -1060,42 +1068,33 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             
             #
             # Compare actual-vs-computed for EL
-            # Correct if out of tolerance range
             #
-            el_ratio = actual_el / tmp_el
+            el_diff = actual_el - tmp_el
+            if (abs(el_diff) > 0.02):
+                prop = int(abs(el_diff) / 0.02)
+                prop = 1.0 + (float(prop-1) * 0.025)
+                ds = sign(el_diff)
+                rs = sign(el_rate)
+                idx = ds+rs
+                el_rate_corr = gain(rmap[idx], prop)
+            else:
+                el_rate_corr = 1.0
 
-            #
-            # Make sure the correction "sense" is appropriate
-            #   for the direction of motion
-            #
-            if (el_rpm >= 0):
-                correct_el = 1.0 / el_ratio
-            
             #
             # Compare actual-vs-computed for AZ
-            # Correct if out of tolerance range
             #
-            az_ratio = actual_az / tmp_az
-            
-            #
-            # Make sure the correction "sense" is appropriate
-            #   for the directon of motion.
-            #
-            if (az_rpm >= 0):
-                correct_az = 1.0 / az_ratio
+            az_diff = actual_az - tmp_az
+            if (abs(az_diff) > 0.02):
+                prop = int(abs(az_diff) / 0.02)
+                prop = 1.0 + (float(prop-1) * 0.025)
+                ds = sign(az_diff)
+                rs = sign(az_rate)
+                idx = ds+rs
+                az_rate_corr = gain(rmap[idx], prop)
+            else:
+                az_rate_corr = 1.0
 
         corr_cnt +=1
-        
-        if (correct_el > 1.2 or correct_el < 0.8):
-            print ("TRACK: el correction out of range: %f" % correct_el)
-            rv = False
-            break
-
-        if (correct_az > 1.2 or correct_az < 0.8):
-            print ("TRACK: az correction out of range: %f" % correct_az)
-            rv = False
-            break
-        
         
         #
         # We've gone to sleep for a bit, compute new rates
@@ -1104,20 +1103,21 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         az_inst_rate = (tmp_az - t_az) / djd_seconds
         
         #
-        # Average in "future" rate requirement
+        # Average in "future" EL rate requirement
         #
         el_inst_rate += (future_el - tmp_el) / djd_seconds
         el_inst_rate /= 2.0
-        
-        az_inst_rate += (future_az - tmp_az) / djd_seconds
-        az_inst_rate /= 2.0
   
         #
-        # We fold the correction in here, and it gets smoothed along with
-        #  the estimated required motor rate.
+        # Average in future AZ rate requirement
+        az_inst_rate += (future_az - tmp_az) / djd_seconds
+        az_inst_rate /= 2.0
+ 
         #
-        el_rate = (alpha * el_inst_rate * gain(correct_el,gerror)) + (beta * el_rate)
-        az_rate = (alpha * az_inst_rate * gain(correct_az,gerror)) + (beta * az_rate)
+        # Compute smoothed rate
+        #
+        el_rate = (alpha * el_inst_rate * el_rate_corr) + (beta * el_rate)
+        az_rate = (alpha * az_inst_rate * az_rate_corr) + (beta * az_rate)
 
         #
         # Convert to motor-shaft RPM
