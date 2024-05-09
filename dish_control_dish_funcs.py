@@ -44,7 +44,7 @@ def axLimits(ax,srvr):
     try:
         RPC.AccLimit(ax, 1000)
         time.sleep(0.25)
-        RPC.VelLimit(ax, 1200)
+        RPC.VelLimit(ax, 1600)
         rv = True
     except:
         rv = False

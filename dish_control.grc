@@ -44,7 +44,7 @@ blocks:
     rangeType: float
     start: '0'
     step: '50'
-    stop: '1200'
+    stop: '1600'
     value: '50'
     widget: counter_slider
   states:
@@ -123,7 +123,7 @@ blocks:
     rangeType: float
     start: '0'
     step: '50'
-    stop: '1200'
+    stop: '1600'
     value: '50'
     widget: counter_slider
   states:
@@ -395,7 +395,7 @@ blocks:
       \ndef ResetLimits(btn,srvr):\n    if (btn == 1):\n        axLimits(0,srvr)\n\
       \        time.sleep(0.25)\n        axLimits(1,srvr)\n       \ndef axLimits(ax,srvr):\n\
       \    global RPC\n    init_RPC(srvr)\n    try:\n        RPC.AccLimit(ax, 1000)\n\
-      \        time.sleep(0.25)\n        RPC.VelLimit(ax, 1200)\n        rv = True\n\
+      \        time.sleep(0.25)\n        RPC.VelLimit(ax, 1600)\n        rv = True\n\
       \    except:\n        rv = False\n    return rv\n\ndef tryMove(lbl, ax,spd):\n\
       \    global RPC\n    try:\n        RPC.Move(ax,spd)\n    except:\n        print\
       \ (\"Exception in move on axis %d/%f\" % (ax, spd))\n        pass\n\nupstate\
