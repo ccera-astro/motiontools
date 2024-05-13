@@ -352,7 +352,7 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     msg: 'pmt.cons(pmt.to_pmt({"az": posns[1], "el": posns[0]}),pmt.to_pmt(None))'
-    period: '250'
+    period: '1000'
   states:
     bus_sink: false
     bus_source: false
