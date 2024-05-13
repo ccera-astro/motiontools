@@ -45,6 +45,44 @@ blocks:
     coordinate: [184, 12]
     rotation: 0
     state: enabled
+- name: analog_noise_source_x_0
+  id: analog_noise_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    amp: '0.8'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    noise_type: analog.GR_GAUSSIAN
+    seed: '137'
+    type: float
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [72, 524.0]
+    rotation: 0
+    state: true
+- name: analog_noise_source_x_0_0
+  id: analog_noise_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    amp: '0.5'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    noise_type: analog.GR_GAUSSIAN
+    seed: '93'
+    type: float
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [48, 684.0]
+    rotation: 0
+    state: true
 - name: asrc1
   id: parameter
   parameters:
@@ -59,7 +97,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [88, 452.0]
+    coordinate: [424, 548.0]
     rotation: 0
     state: true
 - name: asrc2
@@ -97,7 +135,7 @@ blocks:
     bus_structure: null
     coordinate: [48, 164.0]
     rotation: 0
-    state: true
+    state: disabled
 - name: audio_source_0_0
   id: audio_source
   parameters:
@@ -116,7 +154,7 @@ blocks:
     bus_structure: null
     coordinate: [48, 284.0]
     rotation: 0
-    state: true
+    state: disabled
 - name: band_pass_filter_0
   id: band_pass_filter
   parameters:
@@ -133,7 +171,7 @@ blocks:
     minoutbuf: '0'
     samp_rate: samp_rate
     type: fir_filter_fff
-    width: '30'
+    width: '40'
     win: window.WIN_HAMMING
   states:
     bus_sink: false
@@ -158,7 +196,7 @@ blocks:
     minoutbuf: '0'
     samp_rate: samp_rate
     type: fir_filter_fff
-    width: '30'
+    width: '40'
     win: window.WIN_HAMMING
   states:
     bus_sink: false
@@ -175,7 +213,7 @@ blocks:
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    n: int(samp_rate/100)
+    n: int(samp_rate/10)
     type: float
     vlen: '1'
   states:
@@ -193,7 +231,7 @@ blocks:
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    n: int(samp_rate/100)
+    n: int(samp_rate/10)
     type: float
     vlen: '1'
   states:
@@ -273,6 +311,44 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [496, 224.0]
+    rotation: 0
+    state: true
+- name: blocks_throttle_0
+  id: blocks_throttle
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    ignoretag: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_second: samp_rate
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [264, 716.0]
+    rotation: 0
+    state: true
+- name: blocks_throttle_0_0
+  id: blocks_throttle
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    ignoretag: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_second: samp_rate
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [264, 612.0]
     rotation: 0
     state: true
 - name: cal
@@ -417,7 +493,7 @@ blocks:
     nconnections: '2'
     ref_level: '0'
     showports: 'False'
-    update_time: '0.25'
+    update_time: '0.5'
     vlen: '3600'
     width1: '2'
     width10: '1'
@@ -532,7 +608,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: Produces a "stripchart" type vector
-    decim: '100'
+    decim: '10'
     maxoutbuf: '0'
     minoutbuf: '0'
     seconds: '3600'
@@ -600,7 +676,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: Produces a "stripchart" type vector
-    decim: '100'
+    decim: '10'
     maxoutbuf: '0'
     minoutbuf: '0'
     seconds: '3600'
@@ -618,6 +694,8 @@ blocks:
     state: enabled
 
 connections:
+- [analog_noise_source_x_0, '0', blocks_throttle_0_0, '0']
+- [analog_noise_source_x_0_0, '0', blocks_throttle_0, '0']
 - [audio_source_0, '0', band_pass_filter_0, '0']
 - [audio_source_0_0, '0', band_pass_filter_0_0, '0']
 - [band_pass_filter_0, '0', blocks_multiply_xx_0, '0']
@@ -632,6 +710,8 @@ connections:
 - [blocks_multiply_const_vxx_0_0, '0', single_pole_iir_filter_xx_0_0, '0']
 - [blocks_multiply_xx_0, '0', blocks_multiply_const_vxx_0, '0']
 - [blocks_multiply_xx_0_0, '0', blocks_multiply_const_vxx_0_0, '0']
+- [blocks_throttle_0, '0', band_pass_filter_0_0, '0']
+- [blocks_throttle_0_0, '0', band_pass_filter_0, '0']
 - [single_pole_iir_filter_xx_0, '0', blocks_keep_one_in_n_0, '0']
 - [single_pole_iir_filter_xx_0_0, '0', blocks_keep_one_in_n_0_0, '0']
 - [stripchart_0, '0', qtgui_vector_sink_f_0, '0']
