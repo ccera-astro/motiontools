@@ -131,15 +131,15 @@ blocks:
     low_cutoff_freq: '30'
     maxoutbuf: '0'
     minoutbuf: '0'
-    samp_rate: samp_rate
+    samp_rate: samp_rate/10
     type: fir_filter_fff
-    width: '40'
+    width: '30'
     win: window.WIN_HAMMING
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [288, 36.0]
+    coordinate: [472, 36.0]
     rotation: 0
     state: true
 - name: band_pass_filter_0_0
@@ -156,15 +156,15 @@ blocks:
     low_cutoff_freq: '30'
     maxoutbuf: '0'
     minoutbuf: '0'
-    samp_rate: samp_rate
+    samp_rate: samp_rate/10
     type: fir_filter_fff
-    width: '40'
+    width: '30'
     win: window.WIN_HAMMING
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [272, 244.0]
+    coordinate: [400, 228.0]
     rotation: 0
     state: true
 - name: blocks_keep_one_in_n_0
@@ -175,7 +175,7 @@ blocks:
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    n: int(samp_rate/10)
+    n: int((samp_rate/10)/10)
     type: float
     vlen: '1'
   states:
@@ -193,7 +193,7 @@ blocks:
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    n: int(samp_rate/10)
+    n: int((samp_rate/10)/10)
     type: float
     vlen: '1'
   states:
@@ -218,7 +218,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [696, 60.0]
+    coordinate: [776, 172.0]
     rotation: 0
     state: true
 - name: blocks_multiply_const_vxx_0_0
@@ -254,7 +254,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [496, 48.0]
+    coordinate: [680, 40.0]
     rotation: 0
     state: true
 - name: blocks_multiply_xx_0_0
@@ -272,7 +272,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [496, 224.0]
+    coordinate: [600, 232.0]
     rotation: 0
     state: true
 - name: cal
@@ -335,6 +335,54 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [1376, 296.0]
+    rotation: 0
+    state: true
+- name: filter_fft_low_pass_filter_0
+  id: filter_fft_low_pass_filter
+  parameters:
+    affinity: ''
+    alias: ''
+    beta: '6.76'
+    comment: ''
+    cutoff_freq: '200'
+    decim: '10'
+    gain: '1'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nthreads: '1'
+    samp_rate: samp_rate
+    type: fff
+    width: '100'
+    win: window.WIN_HAMMING
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [280, 52.0]
+    rotation: 0
+    state: true
+- name: filter_fft_low_pass_filter_0_0
+  id: filter_fft_low_pass_filter
+  parameters:
+    affinity: ''
+    alias: ''
+    beta: '6.76'
+    comment: ''
+    cutoff_freq: '200'
+    decim: '10'
+    gain: '1'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nthreads: '1'
+    samp_rate: samp_rate
+    type: fff
+    width: '100'
+    win: window.WIN_HAMMING
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [240, 244.0]
     rotation: 0
     state: true
 - name: logtime
@@ -417,7 +465,7 @@ blocks:
     nconnections: '2'
     ref_level: '0'
     showports: 'False'
-    update_time: '0.25'
+    update_time: '1.0'
     vlen: '3600'
     width1: '2'
     width10: '1'
@@ -449,7 +497,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    alpha: 1.0/(samp_rate*3.0)
+    alpha: 1.0/((samp_rate/10)*3.0)
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -467,7 +515,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    alpha: 1.0/(samp_rate*3.0)
+    alpha: 1.0/((samp_rate/10)*3.0)
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -618,8 +666,8 @@ blocks:
     state: enabled
 
 connections:
-- [audio_source_0, '0', band_pass_filter_0, '0']
-- [audio_source_0_0, '0', band_pass_filter_0_0, '0']
+- [audio_source_0, '0', filter_fft_low_pass_filter_0, '0']
+- [audio_source_0_0, '0', filter_fft_low_pass_filter_0_0, '0']
 - [band_pass_filter_0, '0', blocks_multiply_xx_0, '0']
 - [band_pass_filter_0, '0', blocks_multiply_xx_0, '1']
 - [band_pass_filter_0_0, '0', blocks_multiply_xx_0_0, '0']
@@ -632,6 +680,8 @@ connections:
 - [blocks_multiply_const_vxx_0_0, '0', single_pole_iir_filter_xx_0_0, '0']
 - [blocks_multiply_xx_0, '0', blocks_multiply_const_vxx_0, '0']
 - [blocks_multiply_xx_0_0, '0', blocks_multiply_const_vxx_0_0, '0']
+- [filter_fft_low_pass_filter_0, '0', band_pass_filter_0, '0']
+- [filter_fft_low_pass_filter_0_0, '0', band_pass_filter_0_0, '0']
 - [single_pole_iir_filter_xx_0, '0', blocks_keep_one_in_n_0, '0']
 - [single_pole_iir_filter_xx_0_0, '0', blocks_keep_one_in_n_0_0, '0']
 - [stripchart_0, '0', qtgui_vector_sink_f_0, '0']
