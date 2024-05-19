@@ -6,6 +6,14 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/types.h>          /* See NOTES */
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
+
+
+int proxyLogged = 0;
+int proxyToken = 0;
 
 time_t trans_time;
 
@@ -770,6 +778,65 @@ public:
     }
 };
 
+class ProxyLogin : public xmlrpc_c::method {
+    SysManager *Manager;
+public:
+    ProxyLogin () {
+        // signature and help strings are documentation -- the client
+        // can query this information with a system.methodSignature and
+        // system.methodHelp RPC.
+        this->_signature = "i:s";
+            // method's result and two arguments are integer/float
+        this->_help = "This method allows the security proxy to login";
+        this->Manager = myMgr;
+    }
+    void
+    execute(xmlrpc_c::paramList const& paramList,
+            xmlrpc_c::value *   const  retvalP) {
+        
+        int rval = 0;
+        std::string logstr(paramList.getString(0));
+        paramList.verifyEnd(1);
+        FILE *fp;
+        
+        int OK = 0;
+        
+        logstr = logstr + "\n";
+        fp = fopen ("./motion-access.txt", "r");
+        if (fp != NULL)
+        {
+			char mybuf[256];
+			
+			while (fgets(mybuf, 256, fp) != 0)
+			{
+				if (mybuf == logstr)
+				{
+					OK = 1;
+				}
+			}
+			fclose(fp);
+		}
+        else if (logstr == "Astronomer:Gibbly\n")
+        {
+			OK = 1;
+		}
+		
+		if (OK != 0)
+		{
+			time_t t;
+			
+			time(&t);
+			srandom((unsigned int)t);
+			proxyToken = random();
+			*retvalP = xmlrpc_c::value_int(proxyToken);
+		}
+		else
+		{
+			*retvalP = xmlrpc_c::value_int(-1);
+		}
+    }
+};
+
 int 
 SetUpXMLRPC(SysManager *myMgr) {
 
@@ -788,6 +855,7 @@ SetUpXMLRPC(SysManager *myMgr) {
         xmlrpc_c::methodPtr const MoveWaitP(new MoveWait(myMgr));
         xmlrpc_c::methodPtr const AccLimitP(new AccLimit(myMgr));
         xmlrpc_c::methodPtr const VelLimitP(new VelLimit(myMgr));
+        xmlrpc_c::methodPtr const ProxyLoginP(new ProxyLogin());
         
         myRegistry.addMethod("Move", MoveMethodP);
         myRegistry.addMethod("Shutdown", ShutdownMethodP);
@@ -801,19 +869,26 @@ SetUpXMLRPC(SysManager *myMgr) {
         myRegistry.addMethod("AccLimit", AccLimitP);
         myRegistry.addMethod("VelLimit", VelLimitP);
         myRegistry.addMethod ("MoveWait", MoveWaitP);
+        myRegistry.addMethod ("ProxyLogin", ProxyLoginP);
         
         signal(SIGALRM, alarm_handler);
         signal(SIGINT, exit_handler);
         signal(SIGHUP, exit_handler);
         signal(SIGQUIT, exit_handler);
         signal(SIGABRT, exit_handler);
-        
-        
+
+		struct sockaddr_in s;
+		s.sin_family = AF_INET;
+		s.sin_port = htons(36036);
+		inet_pton(AF_INET, "127.0.0.1", &s.sin_addr);
+
         printf ("Going into abyss!\n");
         xmlrpc_c::serverAbyss myAbyssServer(
             xmlrpc_c::serverAbyss::constrOpt()
             .registryP(&myRegistry)
-            .portNumber(36036));
+            //.portNumber(36036)
+            .sockAddrP((const sockaddr *)&s)
+            .sockAddrLen(sizeof(s)));
         
         myAbyssServer.run();
         // xmlrpc_c::serverAbyss.run() never returns

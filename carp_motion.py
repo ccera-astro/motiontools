@@ -1081,8 +1081,8 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             # Compare actual-vs-computed for EL
             #
             el_diff = actual_el - tmp_el
-            if (abs(el_diff) > 0.02):
-                prop = int(abs(el_diff) / 0.02)
+            if (abs(el_diff) > 0.022):
+                prop = int(abs(el_diff) / 0.022)
                 prop = 1.0 + (float(prop-1) * 0.025)
                 ds = sign(el_diff)
                 rs = sign(el_rate)
