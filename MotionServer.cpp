@@ -15,6 +15,10 @@
 int proxyLogged = 0;
 int proxyToken = 0;
 
+int motor_state[4] = {0, 0, 0, 0};
+
+time_t heartbeat = 0;
+
 time_t trans_time;
 
 #define MOTOR_LOG_FILE "./motor_performance.dat"
@@ -69,6 +73,7 @@ void exit_handler(int q)
                 }
             }
             myNode.EnableReq(false);
+            motor_state[which] = 0;
             sleep(1);
         }
     myMgr->PortsClose();
@@ -201,6 +206,7 @@ int main(int argc, char* argv[])
             //theNode.Setup.DelayToDisableMsecs = BK_DELAY;
             myMgr->Delay(1200);
             theNode.EnableReq(true);                    //Enable node 
+            motor_state[(int)iNode] = 1;
             //At this point the node is enabled
             printf("Node \t%zi enable request pending\n", iNode);
             double timeout = myMgr->TimeStampMsec() + TIME_TILL_TIMEOUT;    //define a timeout in case the node is unable to enable
@@ -296,6 +302,16 @@ public:
         if (which < cnt)
         {
             INode &myNode = myPort.Nodes(which);
+            if (motor_state[which] != 1)
+            {
+				myNode.EnableReq(true);
+				while (!myNode.Motion.IsReady())
+				{
+					usleep(100000);
+				}
+				sleep(2);
+				motor_state[which] = 1;
+			}
             try
             {
                     myNode.Motion.MoveVelStart(move);
@@ -350,6 +366,7 @@ public:
     
             INode &myNode = myPort.Nodes(which);
             myNode.EnableReq(true);
+            motor_state[which] = 1;
             usleep(500000);
             myNode.Motion.MoveVelStart(0.0);
             //myPort.BrakeControl.BrakeSetting(which, BRAKE_ALLOW_MOTION);
@@ -397,6 +414,16 @@ public:
         {
     
             INode &myNode = myPort.Nodes(which);
+            if (motor_state[which] != 1)
+            {
+				myNode.EnableReq(true);
+				while (!myNode.Motion.IsReady())
+				{
+					usleep(100000);
+				}
+				sleep(2);
+				motor_state[which] = 1;
+			}
             //Get the positioning resolution of the Node
 			uint32_t myPosnResolution = myNode.Info.PositioningResolution;
             double target;
@@ -513,6 +540,7 @@ public:
             //myPort.BrakeControl.BrakeSetting(which, BRAKE_PREVENT_MOTION);
             sleep((BK_DELAY/1000));
             myNode.EnableReq(false);
+            motor_state[which] = 0;
         }
         else
         {
@@ -571,7 +599,7 @@ public:
     execute(xmlrpc_c::paramList const& paramList,
             xmlrpc_c::value *   const  retvalP) {
         
-        double rval = (double)trans_time;
+        double rval = (double)heartbeat;
         *retvalP = xmlrpc_c::value_double(rval);
     }
 };
@@ -837,6 +865,32 @@ public:
     }
 };
 
+
+class HeartBeat : public xmlrpc_c::method {
+    SysManager *Manager;
+public:
+    HeartBeat () {
+        // signature and help strings are documentation -- the client
+        // can query this information with a system.methodSignature and
+        // system.methodHelp RPC.
+        this->_signature = "i:i";
+            // method's result and two arguments are integer/float
+        this->_help = "This allows an app to update the heartbeat time";
+        this->Manager = myMgr;
+    }
+    void
+    execute(xmlrpc_c::paramList const& paramList,
+            xmlrpc_c::value *   const  retvalP) {
+        
+        int rval = 0;
+        int logstr(paramList.getInt(0));
+        paramList.verifyEnd(1);
+        
+        time(&heartbeat);
+        *retvalP = xmlrpc_c::value_int(0);
+    }
+};
+
 int 
 SetUpXMLRPC(SysManager *myMgr) {
 
@@ -856,6 +910,7 @@ SetUpXMLRPC(SysManager *myMgr) {
         xmlrpc_c::methodPtr const AccLimitP(new AccLimit(myMgr));
         xmlrpc_c::methodPtr const VelLimitP(new VelLimit(myMgr));
         xmlrpc_c::methodPtr const ProxyLoginP(new ProxyLogin());
+        xmlrpc_c::methodPtr const HeartBeatP(new HeartBeat());
         
         myRegistry.addMethod("Move", MoveMethodP);
         myRegistry.addMethod("Shutdown", ShutdownMethodP);
@@ -870,6 +925,7 @@ SetUpXMLRPC(SysManager *myMgr) {
         myRegistry.addMethod("VelLimit", VelLimitP);
         myRegistry.addMethod ("MoveWait", MoveWaitP);
         myRegistry.addMethod ("ProxyLogin", ProxyLoginP);
+        myRegistry.addMethod ("HeartBeat", HeartBeatP);
         
         signal(SIGALRM, alarm_handler);
         signal(SIGINT, exit_handler);

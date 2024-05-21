@@ -8,11 +8,12 @@ import xmlrpc.client as xml
 import argparse
 import traceback
 import ephem
+import numpy
 
 #
 # Target error when slewing
 #
-SERROR = 0.04
+SERROR = 0.035
 
 #
 # Establish some constants
@@ -60,8 +61,8 @@ DEG_MINUTE = 0.25
 #
 # Soft limits for motion
 #
-ELEVATION_LIMITS = (0.5,88.5)
-AZIMUTH_LIMITS = (0.5,356.75)
+ELEVATION_LIMITS = (0.5,89.5)
+AZIMUTH_LIMITS = (0.0,357.25)
 
 #
 # Gear spin max
@@ -142,7 +143,13 @@ def get_az_sensor():
 
 def get_both_sensors():
     global rpc2
-    return (rpc2.query_both_axes())
+
+    val1 = rpc2.query_both_axes()
+    time.sleep(0.15)
+    val2 = rpc2.query_both_axes()
+    val = numpy.add(val1, val2)
+    val = numpy.divide(val,2.0)
+    return (val)
 
 def restore_limits():
     set_az_acclimit(2000)
@@ -297,7 +304,7 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear, frate_el, frate_az):
         #   we're moving slower than the sky, or just-barely-faster.
         #
         el_slew = proportional_speed(abs(targ_el - cur_el), prop_limit, linear)
-        el_slew = max(el_slew, dps_to_rpm(frate_el*3.0, ELEV_RATIO))
+        el_slew = max(el_slew, dps_to_rpm(frate_el*2.0, ELEV_RATIO))
     #
     # Compute for azimuth
     # Azimuth moves faster than elevation, so adjust the resulting curve
@@ -312,7 +319,7 @@ def slew_rate(targ_el, targ_az, cur_el, cur_az, linear, frate_el, frate_az):
         #   we're moving slower than the sky, or just-barely-faster.
         #
         az_slew = proportional_speed(abs(targ_az - cur_az), prop_limit*1.333, linear)
-        az_slew = max(az_slew, dps_to_rpm(frate_az*3.0, AZIM_RATIO))
+        az_slew = max(az_slew, dps_to_rpm(frate_az*2.0, AZIM_RATIO))
 
     #
     # Adjust sign
@@ -660,7 +667,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
 #
 # Returns: True for success False otherwise
 #
-def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body, minterval, sim, gerror):
+def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body, minterval, sim, gerror, serror):
 
     rv = True
     #
@@ -833,7 +840,7 @@ def sign(x):
 # Returns: True for success False otherwise
 #
 def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body, minterval,
-    simulate,gerror):
+    simulate,gerror,serror):
         
     sidt = cur_sidereal(lon,lat)
     sidt = sidt.split(",")
@@ -874,6 +881,72 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     initial_az = from_ephem_coord("%s" % v.az)
     initial_el = from_ephem_coord("%s" % v.alt)
     
+    #
+    # See if an initial position correction will help
+    #
+    
+    #
+    # First, set limits
+    #
+    set_az_acclimit(600)
+    set_az_vellimit(75)
+    set_el_acclimit(800)
+    set_el_vellimit(150)
+    
+    el_in_motion = False
+    az_in_motion = False
+    posns = get_both_sensors()
+    
+    #
+    # Check desired-vs-actual
+    # Do an angle move if necessary
+    #
+    
+    #
+    # Azimuth
+    #
+    if ((initial_az - posns[1]) > (serror*0.7)):
+        az_in_motion = True
+        move_az_angle(initial_az-posns[1])
+     
+    #
+    # Elevation
+    #
+    if ((initial_el - posns[0]) > (serror*0.7)):
+        move_el_angle(initial_el-posns[0])
+        el_in_motion = True
+    
+    #
+    # Wait for those moves to complete
+    #
+    while True:
+        #
+        # Issue motion waits as necessary
+        #
+        
+        #
+        # Elevation
+        #
+        if (el_in_motion):
+            if (wait_el_move(0) != 0):
+                el_in_motion = False
+        #
+        # Azimuth
+        #
+        if (az_in_motion):
+            if (wait_az_move(0) != 0):
+                az_in_motion = False
+        #
+        # Break if neither axis is in motion
+        #
+        if (not az_in_motion and not el_in_motion):
+            break
+        #
+        # Go to sleep for just a little bit
+        # We want to be ready to proceed to rate-based tracking
+        #   as soon as possible!
+        #
+        time.sleep(0.1)
         
     #
     # Crude test to see if this tracking request crosses the singularity region
@@ -902,6 +975,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     el_rpm = round(dps_to_rpm(el_rate, ELEV_RATIO), 2)
     az_rpm = round(dps_to_rpm(az_rate, AZIM_RATIO), 2)
 
+    
 
     if (simulate is False):
         #
@@ -938,15 +1012,11 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     az_rate_corr = 1.0
     
     #
-    # Map of rate bump for situations where we're not where we should be
-    #  Basically indexed by the sign of both the position difference and
-    #  the current drive direction.
-    #
-    rmap = {"10" : 1.05, "11" : 0.95, "01" : 1.05, "00" : 0.95}
-    
-    #
     # Enter the control loop
     #
+    last_correct_time = time.time()
+    previous_el = -99.0
+    previous_az = -99.0
     while True:
         #
         # Looks like we're done
@@ -1066,47 +1136,80 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         #
         djd_seconds = new_djd - old_djd
         djd_seconds *= 86400.0
- 
+        
         #
-        # Compute a correction based on discrepency in computed-vs-actual
-        # The correction is used to increase/decrease the commanded motor rate
+        # Actual motion may be really really slow--like too slow to measure given sensor
+        #   resolution, even over a several-second measurement interval.
         #
-        if (simulate is False and corr_cnt >= 2):
-            corr_cnt = 0
+        # So, we only compute the correction requiered on a longer interval
+        #
+        now = time.time()
+        if ((now - last_correct_time) >= 60):
+            timediff = now-last_correct_time
+            last_correct_time = now
+            #
+            # Grab actual position after sleeping
+            #
             posns = get_both_sensors()
             actual_el = posns[0]
             actual_az = posns[1]
             
             #
-            # Compare actual-vs-computed for EL
+            # By default, rate correction is 1.0
             #
-            el_diff = actual_el - tmp_el
-            if (abs(el_diff) > 0.022):
-                prop = int(abs(el_diff) / 0.022)
-                prop = 1.0 + (float(prop-1) * 0.025)
-                ds = sign(el_diff)
-                rs = sign(el_rate)
-                idx = ds+rs
-                el_rate_corr = gain(rmap[idx], prop)
-            else:
-                el_rate_corr = 1.0
+            el_rate_corr = 1.0
+            
+            if (previous_el >= 0.0):
+                #
+                # Compute the measured elevation axis rate
+                #
+                el_actual_rate = actual_el - previous_el
+                el_actual_rate /= timediff
+                
+                #
+                # Compute the measured vs commanded ratio
+                #
+                el_rate_ratio = abs(el_actual_rate / el_rate)
+                
+                #
+                # If we're apparently "out" by at least 5%, correct
+                #
+                if (el_rate_ratio > 1.05 or el_rate_ratio < 0.95):
+                    el_rate_corr = 1.0 - el_rate_ratio
+                if (el_rate_ratio > 1.25 or el_rate_ratio < 0.75):
+                    print ("EL rate ratio suspiciously high %f" % el_rate_ratio)
+                    rv = False
+                    break
+            #
+            # Default azimuth correction is 1.0
+            #
+            az_rate_corr = 1.0
+            
+            if (previous_az >= 0.0):
+                #
+                # Compute the measured Azimuth axis rate
+                #
+                az_actual_rate = actual_az - previous_az
+                az_actual_rate /= timediff
+                
+                #
+                # Compute the measured vs commanded rate ratio
+                #
+                az_rate_ratio = abs(az_actual_rate / az_rate)
+                
+                #
+                # If the ratio exceeds limits, apply correction
+                #
+                if (az_rate_ratio > 1.05 or az_rate_ratio < 0.95):
+                    az_rate_corr = 1.0 - az_rate_ratio
+                if (az_rate_ratio > 1.25 or az_rate_ratio < 0.75):
+                    print ("AZ rate ratio suspiciously high" % az_rate_ratio)
+                    rv = False
+                    break
+            
+            previous_el = actual_el
+            previous_az = actual_az
 
-            #
-            # Compare actual-vs-computed for AZ
-            #
-            az_diff = actual_az - tmp_az
-            if (abs(az_diff) > 0.02):
-                prop = int(abs(az_diff) / 0.02)
-                prop = 1.0 + (float(prop-1) * 0.025)
-                ds = sign(az_diff)
-                rs = sign(az_rate)
-                idx = ds+rs
-                az_rate_corr = gain(rmap[idx], prop)
-            else:
-                az_rate_corr = 1.0
-
-        corr_cnt +=1
-        
         #
         # We've gone to sleep for a bit, compute new rates
         #
@@ -1183,7 +1286,7 @@ def main():
     parser.add_argument ("--stuttered", action="store_true", default=False, help="Stuttered tracking")
     parser.add_argument ("--serverexit", action="store_true", default=False, help="Exit motor server when done")
     parser.add_argument ("--gerror", type=float, default=1.0, help="Gain value for error estimate in tracking")
-    parser.add_argument ("--serror", type=float, default=SERROR, help="Error target during slewing")
+    parser.add_argument ("--serror", type=float, default=SERROR, help="Allowable error target during slewing")
     parser.add_argument ("--galactic", action="store_true", default=False, help="RA/DEC are galactic long/lat")
 
     args = parser.parse_args()
@@ -1280,7 +1383,7 @@ def main():
             if (args.stuttered is True):
                 track_fcn = track_stuttered
             if (track_fcn(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset,
-                fp, body, args.tinterval, args.simulate,args.gerror)
+                fp, body, args.tinterval, args.simulate,args.gerror,args.serror)
                 is not True):
                 print ("Problem encountered while tracking.  Done tracking")
                 if (args.simulate is False):
