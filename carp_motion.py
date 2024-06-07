@@ -1139,7 +1139,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # So, we only compute the correction required on a longer interval
         #
         now = time.time()
-        if ((now - last_correct_time) >= 60):
+        if ((now - last_correct_time) >= 90):
             timediff = now-last_correct_time
             last_correct_time = now
             ltp = time.gmtime()
