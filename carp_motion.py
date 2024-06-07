@@ -1143,7 +1143,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             timediff = now-last_correct_time
             last_correct_time = now
             ltp = time.gmtime()
-            print ("%02d:%02d:%02d Time to compute correction" % (
+            print ("%02d:%02d:%02d TRACK: Time to compute correction" % (
                 ltp.tm_hour, ltp.tm_min, ltp.tm_sec))
             #
             # Grab actual position after sleeping
@@ -1173,7 +1173,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
                 if (el_rate_ratio > 1.05 or el_rate_ratio < 0.95):
                     el_rate_corr = 1.0 - el_rate_ratio
                 if (el_rate_ratio > 1.25 or el_rate_ratio < 0.75):
-                    print ("EL rate ratio suspiciously high %f %f" % (el_rate_ratio, el_rate))
+                    print ("EL rate ratio suspiciously high %f %f %f" % (el_rate_ratio, el_rate, el_actual_rate))
                     rv = False
                     break
             #
@@ -1199,7 +1199,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
                 if (az_rate_ratio > 1.05 or az_rate_ratio < 0.95):
                     az_rate_corr = 1.0 - az_rate_ratio
                 if (az_rate_ratio > 1.25 or az_rate_ratio < 0.75):
-                    print ("AZ rate ratio suspiciously high %f %f" % (az_rate_ratio, az_rate))
+                    print ("AZ rate ratio suspiciously high %f %f %f" % (az_rate_ratio, az_rate, az_actual_rate))
                     rv = False
                     break
             
