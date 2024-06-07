@@ -1146,7 +1146,6 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             #
             actual_el, actual_az = get_both_sensors()
  
-            
             #
             # By default, rate correction is 1.0
             #
@@ -1196,7 +1195,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
                 if (az_rate_ratio > 1.05 or az_rate_ratio < 0.95):
                     az_rate_corr = 1.0 - az_rate_ratio
                 if (az_rate_ratio > 1.25 or az_rate_ratio < 0.75):
-                    print ("AZ rate ratio suspiciously high %f %f" % (az_rate_ratio % az_rate))
+                    print ("AZ rate ratio suspiciously high %f %f" % (az_rate_ratio, az_rate))
                     rv = False
                     break
             
