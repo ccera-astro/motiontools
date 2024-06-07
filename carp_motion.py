@@ -439,9 +439,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     #
     if (posonly is False):
         last_time_sensors = time.time()
-        cmp_axes = get_both_sensors()
-        cmp_el = cmp_axes[0]
-        cmp_az = cmp_axes[1]
+        cmp_el, cmp_az  = get_both_sensors()
         time.sleep(ptime)
         cur_el = cmp_el
         cur_az = cmp_az
@@ -537,9 +535,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #
         # Get sensors
         #
-        axes = get_both_sensors()
-        cur_el = axes[0]
-        cur_az = axes[1]
+        cur_el, cur_az = get_both_sensors()
 
         if (cur_el < 0.5 or cur_el > 88.0):
             limits = True
@@ -735,9 +731,7 @@ def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, 
         #
         # Get our current actual position
         #
-        axes = get_both_sensors()
-        cur_el = axes[0]
-        cur_az = axes[1]
+        cur_el, cur_az = get_both_sensors()
 
         #
         # If elevation has drifted enough, move through computed angle
@@ -908,6 +902,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     if ((initial_az - posns[1]) > (serror*0.7)):
         az_in_motion = True
         move_az_angle(initial_az-posns[1])
+        print ("TRACKING: Initial adjusting azimuth by: %f" % (initial_az - posns[1]))
      
     #
     # Elevation
@@ -915,6 +910,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     if ((initial_el - posns[0]) > (serror*0.7)):
         move_el_angle(initial_el-posns[0])
         el_in_motion = True
+        print ("TRACKING: Initial adjusting elevation by: %f" % (initial_el - posns[0]))
     
     #
     # Wait for those moves to complete
@@ -1078,9 +1074,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # Get our current actual position
         #
         if (simulate is False):
-            axes = get_both_sensors()
-            cur_el = axes[0]
-            cur_az = axes[1]
+            cur_el, cur_az = get_both_sensors()
         else:
             cur_el = 45.0
             cur_az = 180.0
@@ -1150,9 +1144,8 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             #
             # Grab actual position after sleeping
             #
-            posns = get_both_sensors()
-            actual_el = posns[0]
-            actual_az = posns[1]
+            actual_el, actual_az = get_both_sensors()
+ 
             
             #
             # By default, rate correction is 1.0
@@ -1177,7 +1170,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
                 if (el_rate_ratio > 1.05 or el_rate_ratio < 0.95):
                     el_rate_corr = 1.0 - el_rate_ratio
                 if (el_rate_ratio > 1.25 or el_rate_ratio < 0.75):
-                    print ("EL rate ratio suspiciously high %f" % el_rate_ratio)
+                    print ("EL rate ratio suspiciously high %f %f" % (el_rate_ratio, el_rate))
                     rv = False
                     break
             #
@@ -1203,7 +1196,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
                 if (az_rate_ratio > 1.05 or az_rate_ratio < 0.95):
                     az_rate_corr = 1.0 - az_rate_ratio
                 if (az_rate_ratio > 1.25 or az_rate_ratio < 0.75):
-                    print ("AZ rate ratio suspiciously high" % az_rate_ratio)
+                    print ("AZ rate ratio suspiciously high %f %f" % (az_rate_ratio % az_rate))
                     rv = False
                     break
             
