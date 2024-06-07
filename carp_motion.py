@@ -1080,8 +1080,9 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             cur_az = 180.0
 
         ltp = time.gmtime()
-        thestring = "%02d,%02d,%02d,TRACK,%f,%f,%f,%f,%f,%f,%f,%f\n" % (ltp.tm_hour,
-            ltp.tm_min, ltp.tm_sec, t_az, t_el, cur_az, cur_el, az_rpm, el_rpm, az_rate, el_rate)
+        thestring = "%02d,%02d,%02d,TRACK,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n" % (ltp.tm_hour,
+            ltp.tm_min, ltp.tm_sec, t_az, t_el, cur_az, cur_el, az_rpm, el_rpm, az_rate, el_rate,
+            az_rate_corr, el_rate_corr)
         lfp.write (thestring)
         lfp.flush()
         sys.stderr.write(thestring)
@@ -1135,12 +1136,15 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # Actual motion may be really really slow--like too slow to measure given sensor
         #   resolution, even over a several-second measurement interval.
         #
-        # So, we only compute the correction requiered on a longer interval
+        # So, we only compute the correction required on a longer interval
         #
         now = time.time()
         if ((now - last_correct_time) >= 60):
             timediff = now-last_correct_time
             last_correct_time = now
+            ltp = time.gmtime()
+            print ("%02d:%02d:%02d Time to compute correction" % (
+                ltp.tm_hour, ltp.tm_min, ltp.tm_sec))
             #
             # Grab actual position after sleeping
             #
