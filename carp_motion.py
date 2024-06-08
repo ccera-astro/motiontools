@@ -889,7 +889,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     
     el_in_motion = False
     az_in_motion = False
-    posns = get_both_sensors()
+    now_el, now_az = get_both_sensors()
     
     #
     # Check desired-vs-actual
@@ -899,18 +899,18 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     #
     # Azimuth
     #
-    if ((initial_az - posns[1]) > (serror*0.7)):
+    if ((initial_az - now_az) > (serror*0.7)):
         az_in_motion = True
-        move_az_angle(initial_az-posns[1])
-        print ("TRACKING: Initial adjusting azimuth by: %f" % (initial_az - posns[1]))
+        move_az_angle(initial_az-now_az)
+        print ("TRACKING: Initially adjusting azimuth by: %f" % (initial_az - posns[1]))
      
     #
     # Elevation
     #
-    if ((initial_el - posns[0]) > (serror*0.7)):
-        move_el_angle(initial_el-posns[0])
+    if ((initial_el - now_el) > (serror*0.7)):
+        move_el_angle(initial_el-now_el)
         el_in_motion = True
-        print ("TRACKING: Initial adjusting elevation by: %f" % (initial_el - posns[0]))
+        print ("TRACKING: Initially adjusting elevation by: %f" % (initial_el - posns[0]))
     
     #
     # Wait for those moves to complete
@@ -998,7 +998,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     #
     # Smoothing for rate estimates
     #
-    alpha = 0.4
+    alpha = 0.3
     beta = 1.0 - alpha
     
     prev_az_rpm = 9999.0
@@ -1160,12 +1160,12 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
                 # Compute the measured elevation axis rate
                 #
                 el_actual_rate = actual_el - previous_el
-                el_actual_rate /= timediff
+                #el_actual_rate /= timediff
                 
                 #
                 # Compute the measured vs commanded ratio
                 #
-                el_rate_ratio = abs(el_actual_rate / el_rate)
+                el_rate_ratio = abs(el_actual_rate / (timediff*el_rate))
                 
                 #
                 # If we're apparently "out" by at least 5%, correct
@@ -1186,23 +1186,28 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
                 # Compute the measured Azimuth axis rate
                 #
                 az_actual_rate = actual_az - previous_az
-                az_actual_rate /= timediff
+                #az_actual_rate /= timediff
                 
                 #
                 # Compute the measured vs commanded rate ratio
                 #
-                az_rate_ratio = abs(az_actual_rate / az_rate)
+                az_rate_ratio = abs(az_actual_rate / (timediff*az_rate))
                 
                 #
                 # If the ratio exceeds limits, apply correction
                 #
                 if (az_rate_ratio > 1.05 or az_rate_ratio < 0.95):
                     az_rate_corr = 1.0 - az_rate_ratio
+                
+                print ("%02d:%02d:%02d TRACK: Computed corrections %f %f" % (
+                    ltp.tm_hour, ltp.tm_min, ltp.tm_sec, az_rate_corr, el_rate_corr))
+                    
                 if (az_rate_ratio > 1.25 or az_rate_ratio < 0.75):
                     print ("AZ rate ratio suspiciously high %f %f %f" % (az_rate_ratio, az_rate, az_actual_rate))
                     rv = False
                     break
             
+ 
             previous_el = actual_el
             previous_az = actual_az
 
