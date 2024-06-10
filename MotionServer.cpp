@@ -311,7 +311,7 @@ public:
 				{
 					usleep(100000);
 				}
-				sleep(2);
+				sleep(3);
 				motor_state[which] = 1;
 			}
             try
@@ -423,7 +423,7 @@ public:
 				{
 					usleep(100000);
 				}
-				sleep(2);
+				sleep(3);
 				motor_state[which] = 1;
 			}
             //Get the positioning resolution of the Node

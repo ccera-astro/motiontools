@@ -119,3 +119,14 @@ def get_posns(pacer,srvr):
         #print ("get_posns called, but exception was raised")
         posns = (-1000, -1000)
     return(posns)
+
+def do_heartbeat(pacer,buttons):
+    global RPC
+    print ("Trying heartbeat")
+    if (1 in buttons):
+        print ("Actually trying")
+        try:
+            RPC.HeartBeat(0)
+        except:
+            pass
+    return 1

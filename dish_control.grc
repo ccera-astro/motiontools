@@ -203,6 +203,18 @@ blocks:
     coordinate: [584, 300.0]
     rotation: 0
     state: true
+- name: heartbeat_status
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.do_heartbeat(slow_pacer,[elev_up,elev_down,azim_east,azim_west])
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [384, 212.0]
+    rotation: 0
+    state: true
 - name: limit_status
   id: variable
   parameters:
@@ -289,6 +301,22 @@ blocks:
     coordinate: [1200, 100.0]
     rotation: 0
     state: true
+- name: slow_pacer
+  id: variable_function_probe
+  parameters:
+    block_id: pacer_probe
+    comment: ''
+    function_args: ''
+    function_name: level
+    poll_rate: 1.0/10.0
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [792, 20.0]
+    rotation: 0
+    state: true
 - name: variable_qtgui_label_0
   id: variable_qtgui_label
   parameters:
@@ -359,7 +387,7 @@ blocks:
     bus_structure: null
     coordinate: [976, 428.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_throttle_0
   id: blocks_throttle
   parameters:
@@ -419,7 +447,10 @@ blocks:
       \      if (east == 0):\n                tryMove(\"East\", 1, 0.0)\n\ndef get_posns(pacer,srvr):\n\
       \    global RPC2\n    init_RPC2(srvr)\n    try:\n        posns = RPC2.query_both_axes()\n\
       \    except:\n        #print (\"get_posns called, but exception was raised\"\
-      )\n        posns = (-1000, -1000)\n    return(posns)\n"
+      )\n        posns = (-1000, -1000)\n    return(posns)\n\ndef do_heartbeat(pacer,buttons):\n\
+      \    global RPC\n    print (\"Trying heartbeat\")\n    if (1 in buttons):\n\
+      \        print (\"Actually trying\")\n        try:\n            RPC.HeartBeat(0)\n\
+      \        except:\n            pass\n    return 1\n"
   states:
     bus_sink: false
     bus_source: false
@@ -553,7 +584,7 @@ blocks:
     bus_structure: null
     coordinate: [1296, 436.0]
     rotation: 0
-    state: enabled
+    state: disabled
 
 connections:
 - [analog_sig_source_x_0, '0', blocks_throttle_0, '0']
