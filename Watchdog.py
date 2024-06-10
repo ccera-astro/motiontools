@@ -40,6 +40,7 @@ while True:
             if (alerts_1 not in  OKrets):
                 print ("Motor 1: alerts: %s" % dissect(alerts_1))
             if (stamp > 1000 and ((now - stamp) > args.timeout)):
+                print ("Timeout reached--putting motors in stand-by")
                 rpc.Shutdown(0)
                 time.sleep(3)
                 rpc.Shutdown(1)

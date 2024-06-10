@@ -889,6 +889,7 @@ public:
         paramList.verifyEnd(1);
         
         time(&heartbeat);
+        fprintf (stderr, "Heatbeating at %ld", (long int)heartbeat);
         *retvalP = xmlrpc_c::value_int(0);
     }
 };
