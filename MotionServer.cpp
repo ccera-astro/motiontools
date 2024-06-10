@@ -109,6 +109,8 @@ SetUpXMLRPC(SysManager *);
 int main(int argc, char* argv[])
 {
     //msgUser("Motion Server starting. Press Enter to continue.");
+    
+    time(&heartbeat);
 
 	size_t portCount = 0;
     std::vector<std::string> comHubPorts;

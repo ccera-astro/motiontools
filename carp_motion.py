@@ -78,9 +78,14 @@ gear_spin_max = GEAR_SPIN_MAX
 #
 ACC_LIMIT = 2750
 
+
 #
 # Motor server interface
 #
+def send_heartbeat():
+    global rpc
+    return rpc.HearBeat(0)
+    
 def set_az_speed(spd):
     global rpc
     return rpc.Move(1,spd*AZ_SIGN)
@@ -463,7 +468,17 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
     final_el_rate = 0.0
     final_az_rate = 0.0
 
+    heartbeat_time = time.time()
     while True:
+        
+        #
+        # Let motor server know we're still alive -- we don't do this on
+        #  every iteration, since our cadence is quite high, but rather
+        #  only every 10 seconds or so.
+        #
+        if ((time.time() - heartbeat_time) > 10):
+            send_heartbeat()
+            heartbeat_time = time.time()
         limits = False
         #
         # Looks like down below, we have stopped motion on both
@@ -916,6 +931,13 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     # Wait for those moves to complete
     #
     while True:
+        
+        #
+        # Let motor server know we're still alive
+        #
+        send_heartbeat()
+        
+        
         #
         # Issue motion waits as necessary
         #
