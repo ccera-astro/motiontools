@@ -49,7 +49,6 @@ while True:
     except Exception as e:
         print ("No comms with server...sleeping")
         print (e)
-        
         time.sleep (sleeptime)
         if (sleeptime < 60):
             sleeptime *= 2
