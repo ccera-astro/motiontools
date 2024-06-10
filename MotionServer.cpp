@@ -602,6 +602,7 @@ public:
             xmlrpc_c::value *   const  retvalP) {
         
         double rval = (double)heartbeat;
+        fprintf (stderr, "Query time is %lf\n", rval);
         *retvalP = xmlrpc_c::value_double(rval);
     }
 };
