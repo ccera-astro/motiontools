@@ -42,12 +42,14 @@ while True:
             if (stamp > 1000 and ((now - stamp) > args.timeout)):
                 print ("Timeout reached--putting motors in stand-by")
                 rpc.Shutdown(0)
-                time.sleep(3)
+                time.sleep(1)
                 rpc.Shutdown(1)
                 #rpc.SysExit(0)
         sleeptime = 10
-    except:
+    except Exception as e:
         print ("No comms with server...sleeping")
+        print (e)
+        
         time.sleep (sleeptime)
         if (sleeptime < 60):
             sleeptime *= 2
