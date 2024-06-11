@@ -10,7 +10,7 @@ def dissect(s):
 parser = argparse.ArgumentParser()
 parser.add_argument("--proxy", type=str, default="http://localhost:36036", help="XMLRPC Server")
 parser.add_argument("--sensorproxy", type=str, default="http://localhost:9090", help="XMLRPC Sensor Server")
-parser.add_argument("--timeout", type=int, default=60, help="Watchdog timeout (seconds)")
+parser.add_argument("--timeout", type=int, default=90, help="Watchdog timeout (seconds)")
 
 args = parser.parse_args()
 rpc = xml.ServerProxy(args.proxy)
@@ -19,6 +19,7 @@ stamp = 0
 OKrets = ["None", "BADNODE"]
 sleeptime = 3
 
+commanded_standby = False
 while True:
     now = time.time()
     try:
@@ -39,12 +40,15 @@ while True:
                 print ("Motor 0: alerts: %s" % dissect(alerts_0))
             if (alerts_1 not in  OKrets):
                 print ("Motor 1: alerts: %s" % dissect(alerts_1))
-            if (stamp > 1000 and ((now - stamp) > args.timeout)):
-                print ("Timeout reached--putting motors in stand-by")
+            if (commanded_standby is False and stamp > 1000 and ((now - stamp) > args.timeout)):
+                print ("Timeout reached (%f)--putting motors in stand-by" % (now-stamp))
                 rpc.Shutdown(0)
                 time.sleep(1)
                 rpc.Shutdown(1)
+                commanded_standby = True
                 #rpc.SysExit(0)
+            if (commanded_standby is True and ((now - stamp) < args.timeout)):
+                commanded_standby = False
         sleeptime = 10
     except Exception as e:
         print ("No comms with server...sleeping")

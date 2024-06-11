@@ -110,8 +110,6 @@ int main(int argc, char* argv[])
 {
     //msgUser("Motion Server starting. Press Enter to continue.");
     
-    time(&heartbeat);
-
 	size_t portCount = 0;
     std::vector<std::string> comHubPorts;
     
@@ -235,6 +233,7 @@ int main(int argc, char* argv[])
         }
         // Allow brakes time to disengage before taking MOVE orders from anyone
         sleep(2);
+        time(&heartbeat);
         SetUpXMLRPC(myMgr);
     }
     catch (mnErr& theErr)
@@ -942,6 +941,7 @@ SetUpXMLRPC(SysManager *myMgr) {
 		s.sin_port = htons(36036);
 		inet_pton(AF_INET, "127.0.0.1", &s.sin_addr);
 
+        time(&heartbeat);
         printf ("Going into abyss!\n");
         xmlrpc_c::serverAbyss myAbyssServer(
             xmlrpc_c::serverAbyss::constrOpt()

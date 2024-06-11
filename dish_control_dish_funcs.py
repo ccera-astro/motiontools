@@ -53,6 +53,8 @@ def axLimits(ax,srvr):
 def tryMove(lbl, ax,spd):
     global RPC
     try:
+        RPC.HeartBeat(0)
+        time.sleep(0.333)
         RPC.Move(ax,spd)
     except:
         print ("Exception in move on axis %d/%f" % (ax, spd))
