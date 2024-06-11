@@ -663,162 +663,6 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
 
     return rv
 
-#
-# Position-based (stuttered) tracking
-#
-
-#
-# Track target (assumes already recently moved-to)
-#
-# t_ra - target RA in decimal-float format
-# t_dec - target DEC in decimal-float format
-# lat - local geo latitude in decimal-float format
-# lon - local geo longitude in decimal-float format
-# elev - local elevation in decimal/float format
-#
-# Returns: True for success False otherwise
-#
-def track_stuttered(t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body, minterval, sim, gerror, serror):
-
-    rv = True
-    #
-    # Prime ephem to know about our location and time
-    #
-    local = ephem.Observer()
-    local.lat = to_ephem_coord(lat)
-    local.lon = to_ephem_coord(lon)
-    local.elevation = elev
-    local.pressure = 0
-    local.epoch = ephem.J2000
-
-    #
-    # Do intial compute on the target
-    #  celestial coordinate
-    #
-    local.date = ephem.now()
-    if (body is None):
-        v = ephem.FixedBody()
-        v._ra = to_ephem_coord(t_ra)
-        v._dec = to_ephem_coord(t_dec)
-    else:
-        v = body
-        t_ra = from_ephem_coord(str(v.ra))
-        t_dec = from_ephem_coord(str(v.dec))
-
-    #
-    # Acceleration limits during tracking
-    #
-    set_az_acclimit(400)
-    time.sleep(0.25)
-    set_el_acclimit(750)
-
-    #
-    # Velocity limits during tracking
-    #
-    set_az_vellimit(200)
-    time.sleep(0.25)
-    set_el_vellimit(500)
-
-    time.sleep(0.250)
-
-    #
-    # Mark our starting time
-    #
-    start_time = time.time()
-
-    while True:
-        #
-        # Looks like we're done
-        #
-        if ((time.time() - start_time) >= tracktime):
-            set_az_speed(0.0)
-            set_el_speed(0.0)
-            break
-
-        #
-        # Update the ephem sky coordinates
-        #
-        local.date = ephem.now()
-        v.compute(local)
-        t_az = from_ephem_coord("%s" % v.az) + azoffset
-        t_el = from_ephem_coord("%s" % v.alt) + eloffset
-
-        #
-        # Get our current actual position
-        #
-        cur_el, cur_az = get_both_sensors()
-
-        #
-        # If elevation has drifted enough, move through computed angle
-        #
-        el_in_motion = False
-        if (abs(cur_el - t_el) >= 0.07):
-            move_el_angle(t_el-cur_el)
-            el_in_motion = True
-
-        #
-        # If azimuth has drifted enough, move through computed angle
-        #
-        az_in_motion = False
-        if (abs(cur_az - t_az) >= 0.07):
-            move_az_angle(t_az-cur_az)
-            az_in_motion = True
-        
-        #
-        # It won't actually happen that often that AZ and EL both need
-        #   waiting-for at the same time, but we deal with that situation
-        #   regardless.
-        #
-        if (az_in_motion or el_in_motion):
-            wc = 10
-            az_done = False if az_in_motion is True else True
-            el_done = False if el_in_motion is True else True
-            while (wc > 0):
-                if (not az_done and az_in_motion and wait_az_move(0) != 0):
-                    ez_done = True
-                if (not el_done and el_in_motion and wait_el_move(0) != 0):
-                    el_done = True
-                if (el_done and az_done):
-                    break
-                wc -= 1
-                time.sleep(1)
-                    
-        #
-        # We wait on the axis moves, but make sure that if required, both motions
-        #   are initiated in the same iteration.
-        #
-        if (el_in_motion is True):
-            wait_el_move(75)
-            el_in_motion = False
-            
-        if (az_in_motion is True):
-            wait_az_move(75)
-            az_in_motion is False
-
-        ltp = time.gmtime()
-        lfp.write ("%02d,%02d,%02d,TRACK,%f,%f,%f,%f\n" % (ltp.tm_hour,
-            ltp.tm_min, ltp.tm_sec, t_az, t_el, cur_az, cur_el))
-        lfp.flush()
-
-        if (cur_el < ELEVATION_LIMITS[0] or cur_el > ELEVATION_LIMITS[1]):
-            print ("Elevation position limit exceeded (%f).  Halting tracking" % cur_el)
-            rv = False
-            break
-
-        if (cur_az < AZIMUTH_LIMITS[0] or cur_az > AZIMUTH_LIMITS[1]):
-            print ("Azimuth position limit exceeded (%f).  Halting tracking" % cur_az)
-            rv = False
-            break
-
-        time.sleep(minterval)
-    #
-    # No matter how we exit from this loop, make sure things are "safe"
-    #
-    set_az_speed(0.0)
-    set_el_speed(0.0)
-
-    return rv
-
 def gain(x,coeff):
     if (x < 1.0):
         return(x/coeff)
@@ -848,8 +692,24 @@ def sign(x):
 #
 # Returns: True for success False otherwise
 #
-def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body, minterval,
-    simulate,gerror,serror,nocorrect):
+def track_continuous (t_ra, t_dec, lfp, body, args):
+
+    #
+    # Pull everything out of "args" that we need
+    # Used to be individual calling parameters, but it got ungainly
+    #
+    lat = args.lat
+    lon = args.lon
+    elev = args.elev
+    tracktime = args.tracking
+    azoffset = args.azoffset
+    eloffset = args.eloffset
+    minterval = args.tinterval
+    simulate = args.simulate
+    gerror = args.gerror
+    serror = args.serror
+    nocorrect = args.nocorrect
+    
         
     sidt = cur_sidereal(lon,lat)
     sidt = sidt.split(",")
@@ -1306,7 +1166,6 @@ def main():
     parser.add_argument ("--tinterval", type=float, default=10.0, help="Tracking update interval, seconds")
     parser.add_argument ("--trackonly", action="store_true", default=False, help="Only track, no slew")
     parser.add_argument ("--simulate", action="store_true", default=False, help="Simulate only, no motors or sensors")
-    parser.add_argument ("--stuttered", action="store_true", default=False, help="Stuttered tracking")
     parser.add_argument ("--serverexit", action="store_true", default=False, help="Exit motor server when done")
     parser.add_argument ("--gerror", type=float, default=1.0, help="Gain value for error estimate in tracking")
     parser.add_argument ("--serror", type=float, default=SERROR, help="Allowable error target during slewing")
@@ -1403,11 +1262,7 @@ def main():
 
     if (args.absolute is False and (args.tracking > 0)):
         try:
-            track_fcn = track_continuous
-            if (args.stuttered is True):
-                track_fcn = track_stuttered
-            if (track_fcn(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset,
-                fp, body, args.tinterval, args.simulate,args.gerror,args.serror,args.nocorrect)
+            if (track_continuous(tra, tdec, fp, body, args)
                 is not True):
                 print ("Problem encountered while tracking.  Done tracking")
                 if (args.simulate is False):
