@@ -476,7 +476,7 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #  every iteration, since our cadence is quite high, but rather
         #  only every 10 seconds or so.
         #
-        if ((time.time() - heartbeat_time) > 10):
+        if ((time.time() - heartbeat_time) >= 10):
             send_heartbeat()
             heartbeat_time = time.time()
         limits = False
@@ -1161,7 +1161,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # So, we only compute the correction required on a longer interval
         #
         now = time.time()
-        if ((now - last_correct_time) >= 90):
+        if ((now - last_correct_time) >= 60):
             timediff = now-last_correct_time
             last_correct_time = now
             ltp = time.gmtime()
@@ -1177,7 +1177,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             #
             el_rate_corr = 1.0
             
-            if (previous_el >= 0.0):
+            if (el_rpm >= 3.0 and previous_el >= 0.0):
                 #
                 # Compute the measured elevation axis rate
                 #
@@ -1203,7 +1203,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             #
             az_rate_corr = 1.0
             
-            if (previous_az >= 0.0):
+            if (az_rpm >= 3.0 and previous_az >= 0.0):
                 #
                 # Compute the measured Azimuth axis rate
                 #
