@@ -917,7 +917,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     if ((initial_az - now_az) > (serror*0.7)):
         az_in_motion = True
         move_az_angle(initial_az-now_az)
-        print ("TRACKING: Initially adjusting azimuth by: %f" % (initial_az - posns[1]))
+        print ("TRACKING: Initially adjusting azimuth by: %f" % (initial_az - now_az))
      
     #
     # Elevation
@@ -925,7 +925,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
     if ((initial_el - now_el) > (serror*0.7)):
         move_el_angle(initial_el-now_el)
         el_in_motion = True
-        print ("TRACKING: Initially adjusting elevation by: %f" % (initial_el - posns[0]))
+        print ("TRACKING: Initially adjusting elevation by: %f" % (initial_el - now_el))
     
     #
     # Wait for those moves to complete
@@ -1177,7 +1177,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             #
             el_rate_corr = 1.0
             
-            if (el_rpm >= 3.0 and previous_el >= 0.0):
+            if (abs(el_rpm) >= 3.0 and previous_el >= 0.0):
                 #
                 # Compute the measured elevation axis rate
                 #
@@ -1203,7 +1203,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
             #
             az_rate_corr = 1.0
             
-            if (az_rpm >= 3.0 and previous_az >= 0.0):
+            if (abs(az_rpm) >= 3.0 and previous_az >= 0.0):
                 #
                 # Compute the measured Azimuth axis rate
                 #
