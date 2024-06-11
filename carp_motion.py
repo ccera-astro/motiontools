@@ -849,7 +849,7 @@ def sign(x):
 # Returns: True for success False otherwise
 #
 def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset, lfp, body, minterval,
-    simulate,gerror,serror):
+    simulate,gerror,serror,nocorrect):
         
     sidt = cur_sidereal(lon,lat)
     sidt = sidt.split(",")
@@ -1161,7 +1161,7 @@ def track_continuous (t_ra, t_dec, lat, lon, elev, tracktime, azoffset, eloffset
         # So, we only compute the correction required on a longer interval
         #
         now = time.time()
-        if ((now - last_correct_time) >= 60):
+        if (nocorrect is False and (now - last_correct_time) >= 60):
             timediff = now-last_correct_time
             last_correct_time = now
             ltp = time.gmtime()
@@ -1311,6 +1311,7 @@ def main():
     parser.add_argument ("--gerror", type=float, default=1.0, help="Gain value for error estimate in tracking")
     parser.add_argument ("--serror", type=float, default=SERROR, help="Allowable error target during slewing")
     parser.add_argument ("--galactic", action="store_true", default=False, help="RA/DEC are galactic long/lat")
+    parser.add_argument ("--nocorrect", action="store_true", default=False, help="Disable corrections during tracking")
 
     args = parser.parse_args()
 
@@ -1406,7 +1407,7 @@ def main():
             if (args.stuttered is True):
                 track_fcn = track_stuttered
             if (track_fcn(tra, tdec, args.lat, args.lon, args.elev, args.tracking, args.azoffset, args.eloffset,
-                fp, body, args.tinterval, args.simulate,args.gerror,args.serror)
+                fp, body, args.tinterval, args.simulate,args.gerror,args.serror,args.nocorrect)
                 is not True):
                 print ("Problem encountered while tracking.  Done tracking")
                 if (args.simulate is False):
