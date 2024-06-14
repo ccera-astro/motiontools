@@ -9,6 +9,7 @@ import argparse
 import traceback
 import ephem
 import numpy
+import random
 
 #
 # Target error when slewing
@@ -78,6 +79,7 @@ gear_spin_max = GEAR_SPIN_MAX
 #
 ACC_LIMIT = 2750
 
+EQUANT = (1.0/16834.0)*360.0
 
 #
 # Motor server interface
@@ -271,6 +273,11 @@ def dps_to_rpm(d, ratio):
     x *= ratio
     return x
 
+def min_c_rpm(qinterval, ctime, ratio):
+    minc = 4.0*qinterval
+    minc /= ctime
+    return (dps_to_rpm(minc, ratio))
+    
 #
 # We start going into proportional control at this limit in offset between
 #  the current and target position (degrees)
@@ -710,6 +717,7 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
     gerror = args.gerror
     serror = args.serror
     nocorrect = args.nocorrect
+    ctime = args.ctime
     
         
     sidt = cur_sidereal(lon,lat)
@@ -723,18 +731,16 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
     # Prime ephem to know about our location and time
     #
     local = ephem.Observer()
-    local.lat = to_ephem_coord(lat)
-    local.lon = to_ephem_coord(lon)
+    local.lat = math.radians(lat)
+    local.lon = math.radians(lon)
     local.elevation = elev
     local.pressure = 0
     local.epoch = ephem.J2000
-    local.date = ephem.now()
-
+    
     #
     # Do intial compute on the target
     #  celestial coordinate
     #
-    local.date = ephem.now()
     if (body is None):
         v = ephem.FixedBody()
         v._ra = to_ephem_coord(t_ra)
@@ -747,11 +753,10 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
     #
     # Compute required rate right now
     #
+    local.date = ephem.now()
     v.compute(local)
-    #initial_az = from_ephem_coord("%s" % v.az)
-    #initial_el = from_ephem_coord("%s" % v.alt)
     initial_az = math.degrees(v.az)
-    initial_el = math.degrees(v.el)
+    initial_el = math.degrees(v.alt)
     
     #
     # See if an initial position correction will help
@@ -760,14 +765,15 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
     #
     # First, set limits
     #
-    set_az_acclimit(600)
-    set_az_vellimit(75)
-    set_el_acclimit(800)
-    set_el_vellimit(150)
+    if (simulate is False):
+        set_az_acclimit(600)
+        set_az_vellimit(75)
+        set_el_acclimit(800)
+        set_el_vellimit(150)
     
     el_in_motion = False
     az_in_motion = False
-    now_el, now_az = get_both_sensors()
+
     
     #
     # Check desired-vs-actual
@@ -777,30 +783,26 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
     #
     # Azimuth
     #
-    if ((initial_az - now_az) > (serror*0.7)):
-        az_in_motion = True
-        move_az_angle(initial_az-now_az)
-        print ("TRACKING: Initially adjusting azimuth by: %f" % (initial_az - now_az))
+    if (simulate is False):
+        now_el, now_az = get_both_sensors()
+        if (abs(initial_az - now_az) > (serror*0.7)):
+            az_in_motion = True
+            move_az_angle(initial_az-now_az)
+            print ("TRACKING: Initially adjusting azimuth by: %f" % (initial_az - now_az))
      
     #
     # Elevation
     #
-    if ((initial_el - now_el) > (serror*0.7)):
-        move_el_angle(initial_el-now_el)
-        el_in_motion = True
-        print ("TRACKING: Initially adjusting elevation by: %f" % (initial_el - now_el))
+    if (simulate is False):
+        if (abs(initial_el - now_el) > (serror*0.7)):
+            move_el_angle(initial_el-now_el)
+            el_in_motion = True
+            print ("TRACKING: Initially adjusting elevation by: %f" % (initial_el - now_el))
     
     #
     # Wait for those moves to complete
     #
-    while True:
-        
-        #
-        # Let motor server know we're still alive
-        #
-        send_heartbeat()
-        
-        
+    while (simulate is False):
         #
         # Issue motion waits as necessary
         #
@@ -841,12 +843,18 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
         rv = False
         return
 
+    #
+    # Compute position that will be required in "minterval" seconds
+    #
     local.date = ephem.now() + (float(minterval)/86400.0)
     v.compute(local)
  
     later_az = math.degrees(v.az)
     later_el = math.degrees(v.alt)
 
+    #
+    # Derive required drive rate from two positions
+    #
     el_rate = (later_el - initial_el) / float(minterval)
     az_rate = (later_az - initial_az) / float(minterval)
 
@@ -885,9 +893,15 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
     alpha = 0.3
     beta = 1.0 - alpha
     
+    #
+    # Smoothing for error estimates
+    #
+    calpha = 0.125
+    cbeta = 1.0 - calpha
+    
     prev_az_rpm = 9999.0
     prev_el_rpm = 9999.0
-    corr_cnt = 0
+
     el_rate_corr = 1.0
     az_rate_corr = 1.0
     
@@ -897,7 +911,16 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
     last_correct_time = time.time()
     previous_el = -99.0
     previous_az = -99.0
+    smoothed_el_rate_corr = 1.0
+    smoothed_az_rate_corr = 1.0
     while True:
+        
+        #
+        # Let motor server know we're alive
+        #
+        if (simulate is False):
+            send_heartbeat()
+        
         #
         # Looks like we're done
         #
@@ -960,13 +983,13 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
         if (simulate is False):
             cur_el, cur_az = get_both_sensors()
         else:
-            cur_el = 45.0
-            cur_az = 180.0
+            cur_el = t_el * random.uniform(0.999,1.001)
+            cur_az = t_az * random.uniform(0.999,1.001)
 
         ltp = time.gmtime()
-        thestring = "%02d,%02d,%02d,TRACK,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n" % (ltp.tm_hour,
+        thestring = "%02d,%02d,%02d,TRACK,%13.9f,%13.9f,%f,%f,%f,%f,%f,%f,%f,%f\n" % (ltp.tm_hour,
             ltp.tm_min, ltp.tm_sec, t_az, t_el, cur_az, cur_el, az_rpm, el_rpm, az_rate, el_rate,
-            az_rate_corr, el_rate_corr)
+            smoothed_az_rate_corr, smoothed_el_rate_corr)
         lfp.write (thestring)
         lfp.flush()
         sys.stderr.write(thestring)
@@ -1003,14 +1026,6 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
         tmp_az = math.degrees(v.az)
         
         #
-        # Peer into the future a bit
-        #
-        local.date = ephem.now() + (float(minterval) / 86400.0)
-        v.compute(local)
-        future_el = math.degrees(v.alt)
-        future_az = math.degrees(v.az)
-        
-        #
         # Compute DJD time difference between two ephem computes
         #
         djd_seconds = new_djd - old_djd
@@ -1023,7 +1038,7 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
         # So, we only compute the correction required on a longer interval
         #
         now = time.time()
-        if (nocorrect is False and (now - last_correct_time) >= 90):
+        if (nocorrect is False and (now - last_correct_time) >= ctime):
             timediff = now-last_correct_time
             last_correct_time = now
             ltp = time.gmtime()
@@ -1032,59 +1047,76 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
             #
             # Grab actual position after sleeping
             #
-            actual_el, actual_az = get_both_sensors()
+            if (simulate is False):
+                actual_el, actual_az = get_both_sensors()
+            else:
+                qconst = EQUANT
+                rlist = [-qconst,qconst]
+                q_tmp_el = float(int(tmp_el / qconst)) * qconst
+                q_tmp_az = float(int(tmp_az / qconst)) * qconst
+                if (random.randint(0,3) == 0):
+                    actual_el = q_tmp_el + rlist[random.randint(0,1)]
+                    actual_az = q_tmp_az + rlist[random.randint(0,1)]
+                else:
+                    actual_el = q_tmp_el
+                    actual_az = q_tmp_az
  
             #
             # By default, rate correction is 1.0
             #
             el_rate_corr = 1.0
             
-            if (abs(el_rpm) >= 3.0 and previous_el >= 0.0):
+            if (abs(el_rpm) >= min_c_rpm(EQUANT,ctime,ELEV_RATIO) and previous_el >= 0.0):
                 #
                 # Compute the measured elevation axis rate
                 #
                 el_actual_rate = actual_el - previous_el
-                #el_actual_rate /= timediff
                 
                 #
                 # Compute the measured vs commanded ratio
                 #
                 el_rate_ratio = abs(el_actual_rate / (timediff*el_rate))
+                print ("el_rate_ratio %f" % el_rate_ratio)
                 
                 #
-                # If we're apparently "out" by at least 5%, correct
+                # If we're apparently "out" by at least 2.5%, correct
                 #
-                if (el_rate_ratio > 1.05 or el_rate_ratio < 0.95):
-                    el_rate_corr = 1.0 - el_rate_ratio
+                if (el_rate_ratio > 1.025 or el_rate_ratio < 0.975):
+                    el_rate_corr = 1.0 / el_rate_ratio
                 if (el_rate_ratio > 1.25 or el_rate_ratio < 0.75):
                     print ("Warning: EL rate ratio suspiciously high %f %f %f" % (el_rate_ratio, el_rate, el_actual_rate))
                     if (el_rate_ratio > 1.0):
                         el_rate_ratio = 1.25
                     else:
                         el_rate_ratio = 0.75
-                    el_rate_corr = 1.0 - el_rate_ratio
+                    el_rate_corr = 1.0 / el_rate_ratio
+            #
+            # Update smoothed
+            #      
+            smoothed_el_rate_corr = (calpha * el_rate_corr) + (cbeta * smoothed_el_rate_corr)
+            
             #
             # Default azimuth correction is 1.0
             #
             az_rate_corr = 1.0
             
-            if (abs(az_rpm) >= 3.0 and previous_az >= 0.0):
+            if (abs(az_rpm) >= min_c_rpm(EQUANT, ctime, AZIM_RATIO) and previous_az >= 0.0):
                 #
                 # Compute the measured Azimuth axis rate
                 #
                 az_actual_rate = actual_az - previous_az
-                #az_actual_rate /= timediff
                 
                 #
                 # Compute the measured vs commanded rate ratio
                 #
                 az_rate_ratio = abs(az_actual_rate / (timediff*az_rate))
+                print ("AZ rate ratio: %f" % az_rate_ratio)
                 
                 #
                 # If the ratio exceeds limits, apply correction
                 #
-                if (az_rate_ratio > 1.05 or az_rate_ratio < 0.95):
-                    az_rate_corr = 1.0 - az_rate_ratio                
+                if (az_rate_ratio > 1.025 or az_rate_ratio < 0.975):
+                    az_rate_corr = 1.0 / az_rate_ratio                
                     
                 if (az_rate_ratio > 1.25 or az_rate_ratio < 0.75):
                     print ("Warning: AZ rate ratio suspiciously high %f %f %f" % (az_rate_ratio, az_rate, az_actual_rate))
@@ -1092,10 +1124,15 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
                         az_rate_ratio = 1.25
                     else:
                         az_rate_ratio = 0.75
-                    az_rate_corr = 1.0 - az_rate_ratio
+                    az_rate_corr = 1.0 / az_rate_ratio
+            
+            #
+            # Update smoothed
+            #       
+            smoothed_az_rate_corr = (calpha * az_rate_corr) + (cbeta * smoothed_az_rate_corr)
             
             print ("%02d:%02d:%02d TRACK: Computed corrections %f %f" % (
-                ltp.tm_hour, ltp.tm_min, ltp.tm_sec, az_rate_corr, el_rate_corr))
+                ltp.tm_hour, ltp.tm_min, ltp.tm_sec, smoothed_az_rate_corr, smoothed_el_rate_corr))
             previous_el = actual_el
             previous_az = actual_az
 
@@ -1106,21 +1143,10 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
         az_inst_rate = (tmp_az - t_az) / djd_seconds
         
         #
-        # Average in "future" EL rate requirement
-        #
-        el_inst_rate += (future_el - tmp_el) / djd_seconds
-        el_inst_rate /= 2.0
-  
-        #
-        # Average in future AZ rate requirement
-        az_inst_rate += (future_az - tmp_az) / djd_seconds
-        az_inst_rate /= 2.0
- 
-        #
         # Compute smoothed rate
         #
-        el_rate = (alpha * el_inst_rate * el_rate_corr) + (beta * el_rate)
-        az_rate = (alpha * az_inst_rate * az_rate_corr) + (beta * az_rate)
+        el_rate = (alpha * el_inst_rate * smoothed_el_rate_corr) + (beta * el_rate)
+        az_rate = (alpha * az_inst_rate * smoothed_az_rate_corr) + (beta * az_rate)
 
         #
         # Convert to motor-shaft RPM
@@ -1177,7 +1203,7 @@ def main():
     parser.add_argument ("--serror", type=float, default=SERROR, help="Allowable error target during slewing")
     parser.add_argument ("--galactic", action="store_true", default=False, help="RA/DEC are galactic long/lat")
     parser.add_argument ("--nocorrect", action="store_true", default=False, help="Disable corrections during tracking")
-
+    parser.add_argument ("--ctime", type=float, default=30, help="Correction surveillance interval")
     args = parser.parse_args()
 
     gear_spin_max = args.speedlimit
