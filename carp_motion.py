@@ -88,11 +88,11 @@ def send_heartbeat():
     
 def set_az_speed(spd):
     global rpc
-    return rpc.Move(1,spd*AZ_SIGN)
+    return rpc.Move(1,float(spd*AZ_SIGN))
 
 def set_el_speed(spd):
     global rpc
-    return rpc.Move(0,spd*ELEV_SIGN)
+    return rpc.Move(0,float(spd*ELEV_SIGN))
 
 def query_el_torque():
     global rpc
@@ -154,6 +154,7 @@ def get_both_sensors():
     val2 = rpc2.query_both_axes()
     val = numpy.add(val1, val2)
     val = numpy.divide(val,2.0)
+    val = (float(val[0]),float(val[1]))
     return (val)
 
 def restore_limits():
@@ -501,16 +502,16 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         if (absolute is False):
             local.date = ephem.now()
             v.compute(local)
-            t_az = from_ephem_coord("%s" % v.az) + azoffset
-            t_el = from_ephem_coord("%s" % v.alt) + eloffset
+            t_az = math.degrees(v.az) + azoffset
+            t_el = math.degrees(v.alt) + eloffset
             
             #
             # Compute future
             #
             local.date = ephem.now() + (20.0 / 86400.0)
             v.compute(local)
-            f_az = from_ephem_coord("%s" % v.az) + azoffset
-            f_el = from_ephem_coord("%s" % v.alt) + eloffset
+            f_az = math.degrees(v.az) + azoffset
+            f_el = math.degrees(v.alt) + eloffset
             local.date = ephem.now()
             
             #
@@ -552,10 +553,10 @@ def moveto(t_ra, t_dec, lat, lon, elev, azoffset, eloffset, lfp, absolute, poson
         #
         cur_el, cur_az = get_both_sensors()
 
-        if (cur_el < 0.5 or cur_el > 88.0):
+        if (cur_el < 0.5 or cur_el > 89.0):
             limits = True
             break
-        if (cur_az < 1.5 or cur_az > 356.75):
+        if (cur_az < 0.5 or cur_az > 356.75):
             limits = True
             break
 
@@ -747,8 +748,10 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
     # Compute required rate right now
     #
     v.compute(local)
-    initial_az = from_ephem_coord("%s" % v.az)
-    initial_el = from_ephem_coord("%s" % v.alt)
+    #initial_az = from_ephem_coord("%s" % v.az)
+    #initial_el = from_ephem_coord("%s" % v.alt)
+    initial_az = math.degrees(v.az)
+    initial_el = math.degrees(v.el)
     
     #
     # See if an initial position correction will help
@@ -841,8 +844,8 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
     local.date = ephem.now() + (float(minterval)/86400.0)
     v.compute(local)
  
-    later_az = from_ephem_coord("%s" % v.az)
-    later_el = from_ephem_coord("%s" % v.alt)
+    later_az = math.degrees(v.az)
+    later_el = math.degrees(v.alt)
 
     el_rate = (later_el - initial_el) / float(minterval)
     az_rate = (later_az - initial_az) / float(minterval)
@@ -853,7 +856,6 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
     el_rpm = round(dps_to_rpm(el_rate, ELEV_RATIO), 2)
     az_rpm = round(dps_to_rpm(az_rate, AZIM_RATIO), 2)
 
-    
 
     if (simulate is False):
         #
@@ -940,8 +942,8 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
         #
         local.date = ephem.now()
         v.compute(local)
-        t_az = from_ephem_coord("%s" % v.az) + azoffset
-        t_el = from_ephem_coord("%s" % v.alt) + eloffset
+        t_az = math.degrees(v.az) + azoffset
+        t_el = math.degrees(v.alt) + eloffset
         
         if(t_az < AZIMUTH_LIMITS[0] or t_az > AZIMUTH_LIMITS[1]):
             rv = False
@@ -997,16 +999,16 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
         local.date = ephem.now()
         new_djd = local.date
         v.compute(local)
-        tmp_el = from_ephem_coord("%s" % v.alt)
-        tmp_az = from_ephem_coord("%s" % v.az)
+        tmp_el = math.degrees(v.alt)
+        tmp_az = math.degrees(v.az)
         
         #
         # Peer into the future a bit
         #
         local.date = ephem.now() + (float(minterval) / 86400.0)
         v.compute(local)
-        future_el = from_ephem_coord("%s" % v.alt)
-        future_az = from_ephem_coord("%s" % v.az)
+        future_el = math.degrees(v.alt)
+        future_az = math.degrees(v.az)
         
         #
         # Compute DJD time difference between two ephem computes
@@ -1021,7 +1023,7 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
         # So, we only compute the correction required on a longer interval
         #
         now = time.time()
-        if (nocorrect is False and (now - last_correct_time) >= 60):
+        if (nocorrect is False and (now - last_correct_time) >= 90):
             timediff = now-last_correct_time
             last_correct_time = now
             ltp = time.gmtime()
@@ -1055,9 +1057,12 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
                 if (el_rate_ratio > 1.05 or el_rate_ratio < 0.95):
                     el_rate_corr = 1.0 - el_rate_ratio
                 if (el_rate_ratio > 1.25 or el_rate_ratio < 0.75):
-                    print ("EL rate ratio suspiciously high %f %f %f" % (el_rate_ratio, el_rate, el_actual_rate))
-                    rv = False
-                    break
+                    print ("Warning: EL rate ratio suspiciously high %f %f %f" % (el_rate_ratio, el_rate, el_actual_rate))
+                    if (el_rate_ratio > 1.0):
+                        el_rate_ratio = 1.25
+                    else:
+                        el_rate_ratio = 0.75
+                    el_rate_corr = 1.0 - el_rate_ratio
             #
             # Default azimuth correction is 1.0
             #
@@ -1079,17 +1084,18 @@ def track_continuous (t_ra, t_dec, lfp, body, args):
                 # If the ratio exceeds limits, apply correction
                 #
                 if (az_rate_ratio > 1.05 or az_rate_ratio < 0.95):
-                    az_rate_corr = 1.0 - az_rate_ratio
-                
-                print ("%02d:%02d:%02d TRACK: Computed corrections %f %f" % (
-                    ltp.tm_hour, ltp.tm_min, ltp.tm_sec, az_rate_corr, el_rate_corr))
+                    az_rate_corr = 1.0 - az_rate_ratio                
                     
                 if (az_rate_ratio > 1.25 or az_rate_ratio < 0.75):
-                    print ("AZ rate ratio suspiciously high %f %f %f" % (az_rate_ratio, az_rate, az_actual_rate))
-                    rv = False
-                    break
+                    print ("Warning: AZ rate ratio suspiciously high %f %f %f" % (az_rate_ratio, az_rate, az_actual_rate))
+                    if (az_rate_ratio > 1.0):
+                        az_rate_ratio = 1.25
+                    else:
+                        az_rate_ratio = 0.75
+                    az_rate_corr = 1.0 - az_rate_ratio
             
- 
+            print ("%02d:%02d:%02d TRACK: Computed corrections %f %f" % (
+                ltp.tm_hour, ltp.tm_min, ltp.tm_sec, az_rate_corr, el_rate_corr))
             previous_el = actual_el
             previous_az = actual_az
 
