@@ -449,9 +449,8 @@ blocks:
       \    try:\n        posns = RPC2.query_both_axes()\n    except:\n        #print\
       \ (\"get_posns called, but exception was raised\")\n        posns = (-1000,\
       \ -1000)\n    return(posns)\n\ndef do_heartbeat(pacer,buttons):\n    global\
-      \ RPC\n    print (\"Trying heartbeat\")\n    if (1 in buttons):\n        print\
-      \ (\"Actually trying\")\n        try:\n            RPC.HeartBeat(0)\n      \
-      \  except:\n            pass\n    return 1\n"
+      \ RPC\n    if (1 in buttons):\n        try:\n            RPC.HeartBeat(0)\n\
+      \        except:\n            pass\n    return 1\n"
   states:
     bus_sink: false
     bus_source: false

@@ -124,9 +124,7 @@ def get_posns(pacer,srvr):
 
 def do_heartbeat(pacer,buttons):
     global RPC
-    print ("Trying heartbeat")
     if (1 in buttons):
-        print ("Actually trying")
         try:
             RPC.HeartBeat(0)
         except:
