@@ -212,7 +212,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [384, 212.0]
+    coordinate: [216, 220.0]
     rotation: 0
     state: true
 - name: limit_status
@@ -224,14 +224,14 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [376, 140.0]
+    coordinate: [216, 148.0]
     rotation: 0
     state: true
 - name: limits
   id: variable_qtgui_push_button
   parameters:
     comment: ''
-    gui_hint: 7,2,1,1
+    gui_hint: 7,1,1,1
     label: '>>>>RESET LIMITS<<<'
     pressed: '1'
     released: '0'
@@ -241,7 +241,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1208, 220.0]
+    coordinate: [1224, 220.0]
     rotation: 0
     state: true
 - name: pacer
@@ -272,6 +272,30 @@ blocks:
     coordinate: [808, 180.0]
     rotation: 0
     state: true
+- name: pwr_off_status
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.pwr_off(sys_pwr_off,pwr_address)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [368, 100.0]
+    rotation: 0
+    state: true
+- name: pwr_on_status
+  id: variable
+  parameters:
+    comment: ''
+    value: dish_funcs.pwr_on(sys_pwr_on,pwr_address)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [368, 172.0]
+    rotation: 0
+    state: true
 - name: samp_rate
   id: variable
   parameters:
@@ -298,7 +322,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1200, 100.0]
+    coordinate: [1208, 100.0]
     rotation: 0
     state: true
 - name: slow_pacer
@@ -315,6 +339,40 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [792, 20.0]
+    rotation: 0
+    state: true
+- name: sys_pwr_off
+  id: variable_qtgui_push_button
+  parameters:
+    comment: ''
+    gui_hint: 8,1,1,1
+    label: '>>>>SYS PWR OFF<<<<'
+    pressed: '1'
+    released: '0'
+    type: int
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1424, 220.0]
+    rotation: 0
+    state: true
+- name: sys_pwr_on
+  id: variable_qtgui_push_button
+  parameters:
+    comment: ''
+    gui_hint: 8,0,1,1
+    label: '>>>>SYS PWR ON<<<<'
+    pressed: '1'
+    released: '0'
+    type: int
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1424, 100.0]
     rotation: 0
     state: true
 - name: variable_qtgui_label_0
@@ -450,7 +508,17 @@ blocks:
       \ (\"get_posns called, but exception was raised\")\n        posns = (-1000,\
       \ -1000)\n    return(posns)\n\ndef do_heartbeat(pacer,buttons):\n    global\
       \ RPC\n    if (1 in buttons):\n        try:\n            RPC.HeartBeat(0)\n\
-      \        except:\n            pass\n    return 1\n"
+      \        except:\n            pass\n    return 1\n\nimport requests\nimport\
+      \ time\ndef pwr_on(val,ipaddr):\n    if (val == 1):\n        try:\n        \
+      \    print (\"PWR ON with: %d\" % val)\n            r = requests.get('http://%s/30000/03'\
+      \ % ipaddr, timeout=3)\n            time.sleep(0.5)\n            r = requests.get('http://%s/30000/02'\
+      \ % ipaddr, timeout=3)\n        except Exception as e:\n            print (e)\n\
+      \            pass\n    return True\n\ndef pwr_off(val,ipaddr):\n    if (val\
+      \ == 1):\n        try:\n            print (\"PWR OFF with: %d\" % val)\n   \
+      \         r = requests.get('http://%s/30000/01' % ipaddr, timeout=3)\n     \
+      \       time.sleep(0.5)\n            r = requests.get('http://%s/30000/00' %\
+      \ ipaddr, timeout=3)\n        except Exception as e:\n            print(e)\n\
+      \            pass\n    return True\n    \n\n"
   states:
     bus_sink: false
     bus_source: false
@@ -500,6 +568,23 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [728, 356.0]
+    rotation: 0
+    state: true
+- name: pwr_address
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: IP Address for power control relay module
+    short_id: ''
+    type: str
+    value: 192.168.1.4
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [920, 596.0]
     rotation: 0
     state: true
 - name: qss_file

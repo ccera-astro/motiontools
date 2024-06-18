@@ -130,3 +130,31 @@ def do_heartbeat(pacer,buttons):
         except:
             pass
     return 1
+
+import requests
+import time
+def pwr_on(val,ipaddr):
+    if (val == 1):
+        try:
+            print ("PWR ON with: %d" % val)
+            r = requests.get('http://%s/30000/03' % ipaddr, timeout=3)
+            time.sleep(0.5)
+            r = requests.get('http://%s/30000/02' % ipaddr, timeout=3)
+        except Exception as e:
+            print (e)
+            pass
+    return True
+
+def pwr_off(val,ipaddr):
+    if (val == 1):
+        try:
+            print ("PWR OFF with: %d" % val)
+            r = requests.get('http://%s/30000/01' % ipaddr, timeout=3)
+            time.sleep(0.5)
+            r = requests.get('http://%s/30000/00' % ipaddr, timeout=3)
+        except Exception as e:
+            print(e)
+            pass
+    return True
+    
+
