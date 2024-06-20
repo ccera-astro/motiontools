@@ -40,22 +40,21 @@ while True:
                 print ("Motor 0: alerts: %s" % dissect(alerts_0))
             if (alerts_1 not in  OKrets):
                 print ("Motor 1: alerts: %s" % dissect(alerts_1))
-            if (commanded_standby is False and stamp > 1000 and ((now - stamp) > args.timeout)):
+            if (commanded_standby is False and stamp > 1000 and ((now - stamp) >= args.timeout)):
                 print ("Timeout reached (%f)--putting motors in stand-by" % (now-stamp))
                 rpc.Shutdown(0)
                 time.sleep(1)
                 rpc.Shutdown(1)
                 commanded_standby = True
-                #rpc.SysExit(0)
             if (commanded_standby is True and ((now - stamp) < args.timeout)):
                 commanded_standby = False
         sleeptime = 10
     except Exception as e:
         print ("No comms with server...sleeping")
-        print (e)
+        #print (e)
         time.sleep (sleeptime)
         if (sleeptime < 60):
-            sleeptime *= 2
+            sleeptime += 10
             
     time.sleep(5)
 

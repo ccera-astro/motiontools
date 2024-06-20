@@ -510,14 +510,14 @@ blocks:
       \ RPC\n    if (1 in buttons):\n        try:\n            RPC.HeartBeat(0)\n\
       \        except:\n            pass\n    return 1\n\nimport requests\nimport\
       \ time\ndef pwr_on(val,ipaddr):\n    if (val == 1):\n        try:\n        \
-      \    print (\"PWR ON with: %d\" % val)\n            r = requests.get('http://%s/30000/03'\
+      \    #print (\"PWR ON with: %d\" % val)\n            r = requests.get('http://%s/30000/03'\
       \ % ipaddr, timeout=3)\n            time.sleep(0.5)\n            r = requests.get('http://%s/30000/02'\
       \ % ipaddr, timeout=3)\n        except Exception as e:\n            print (e)\n\
       \            pass\n    return True\n\ndef pwr_off(val,ipaddr):\n    if (val\
-      \ == 1):\n        try:\n            print (\"PWR OFF with: %d\" % val)\n   \
-      \         r = requests.get('http://%s/30000/01' % ipaddr, timeout=3)\n     \
-      \       time.sleep(0.5)\n            r = requests.get('http://%s/30000/00' %\
-      \ ipaddr, timeout=3)\n        except Exception as e:\n            print(e)\n\
+      \ == 1):\n        try:\n            #print (\"PWR OFF with: %d\" % val)\n  \
+      \          r = requests.get('http://%s/30000/01' % ipaddr, timeout=3)\n    \
+      \        time.sleep(0.5)\n            r = requests.get('http://%s/30000/00'\
+      \ % ipaddr, timeout=3)\n        except Exception as e:\n            print(e)\n\
       \            pass\n    return True\n    \n\n"
   states:
     bus_sink: false
