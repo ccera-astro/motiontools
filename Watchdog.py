@@ -2,6 +2,7 @@
 import time
 import xmlrpc.client as xml
 import argparse
+import requests
 
 def dissect(s):
     lines = s.split("\n")
@@ -11,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--proxy", type=str, default="http://localhost:36036", help="XMLRPC Server")
 parser.add_argument("--sensorproxy", type=str, default="http://localhost:9090", help="XMLRPC Sensor Server")
 parser.add_argument("--timeout", type=int, default=90, help="Watchdog timeout (seconds)")
+parser.add_argument("--relay", type=str, default="192.168.1.4", help="relay server address")
 
 args = parser.parse_args()
 rpc = xml.ServerProxy(args.proxy)
@@ -20,13 +22,35 @@ OKrets = ["None", "BADNODE"]
 sleeptime = 3
 
 commanded_standby = False
+requests.get("http://%s/30000/04" % args.relay)
+requests.get("http://%s/30000/06" % args.relay)
 while True:
     now = time.time()
     try:
         stamp = rpc.QueryTime(0)
         elspeed = abs(rpc2.query_el_rate())
         azspeed = abs(rpc2.query_az_rate())
-        if (elspeed >= 0.3 or azspeed >= 0.6):
+        #
+        # Turn OFF lights and horn if both axes have gone to (effectively) 0 speed
+        #
+        if (elspeed <= 0.001 and azspeed <= 0.001):
+            result = requests.get("http://%s/30000/04" % args.relay)
+            result = requests.get("http://%s/30000/06" % args.relay)
+        #
+        # Turn ON lights and horn if both axes have turned on
+        #
+        
+        #
+        # Lights first
+        #
+        if (elspeed > 0.00 or azspeed > 0.0):
+            result = requests.get("http://%s/30000/05" % args.relay)
+        #
+        # Then horn
+        #
+        if (elspeed >= 0.1 or azpeed >= 0.05):
+            result = requests.get("http://%s/30000/07" % args.relay)
+        if (elspeed >= 0.25 or azspeed >= 0.5):
             rpc.Shutdown(0)
             time.sleep(3)
             rpc.Shutdown(1)

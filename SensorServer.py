@@ -82,7 +82,7 @@ def query_both_axes():
     global current_elev
     
     return (current_elev,current_az)
-	
+    
 def device_loop(eloffs,azoffs):
     global current_az
     global current_elev
@@ -107,24 +107,25 @@ def device_loop(eloffs,azoffs):
         # Compute rates
         #
 
-        #
-        # Elevation
-        t = current_elev - last_elev
-        elev_rate = abs(t) / (time.time() - last_elev_time)
-        
-        #
-        # Azimuth
-        #
-        t = current_az - last_az
-        az_rate = abs(t) / (time.time() - last_az_time)
-        
-        #
-        # Once computed, make "last" == "current"
-        #
-        last_elev = current_elev
-        last_elev_time = time.time()
-        last_az = current_az
-        last_az_time = time.time()
+        if ((time.time() - last_elev_time) > 10):
+            #
+            # Elevation
+            t = current_elev - last_elev
+            elev_rate = abs(t) / (time.time() - last_elev_time)
+            
+            #
+            # Azimuth
+            #
+            t = current_az - last_az
+            az_rate = abs(t) / (time.time() - last_az_time)
+            
+            #
+            # Once computed, make "last" == "current"
+            #
+            last_elev = current_elev
+            last_elev_time = time.time()
+            last_az = current_az
+            last_az_time = time.time()
         time.sleep(0.200)
 
 parser = argparse.ArgumentParser()
