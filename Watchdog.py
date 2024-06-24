@@ -27,13 +27,15 @@ requests.get("http://%s/30000/06" % args.relay)
 while True:
     now = time.time()
     try:
-        stamp = rpc.QueryTime(0)
-        elspeed = abs(rpc2.query_el_rate())
-        azspeed = abs(rpc2.query_az_rate())
+        tmstrings = rpc.QueryTime(0)
+        tmstrings = tmstrings.split(",")
+        stamp = float(tmstrings[0])
+        elspeed = float(tmstrings[1])
+        azspeed = float(tmstrings[2])
         #
         # Turn OFF lights and horn if both axes have gone to (effectively) 0 speed
         #
-        if (elspeed <= 0.001 and azspeed <= 0.001):
+        if (elspeed <= 0.0 and azspeed <= 0.0):
             result = requests.get("http://%s/30000/04" % args.relay)
             result = requests.get("http://%s/30000/06" % args.relay)
         #
@@ -48,9 +50,11 @@ while True:
         #
         # Then horn
         #
-        if (elspeed >= 0.1 or azpeed >= 0.05):
+        # Speeds are in RPM from the QueryTime call
+        #
+        if (elspeed >= 100.0 or azpeed >= 50.0):
             result = requests.get("http://%s/30000/07" % args.relay)
-        if (elspeed >= 0.25 or azspeed >= 0.5):
+        if (elspeed > 1600 or azspeed > 1600):
             rpc.Shutdown(0)
             time.sleep(3)
             rpc.Shutdown(1)

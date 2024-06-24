@@ -275,6 +275,7 @@ using namespace std;
   #define SLEEP(seconds) sleep(seconds);
 #endif
 
+double curspeeds[] = {0.0, 0.0, 0.0, 0.0};
 
 class MotorControl : public xmlrpc_c::method {
     SysManager *Manager;
@@ -335,6 +336,10 @@ public:
         {
             rval = -2;
         }
+        if (rval == 0)
+        {
+			curspeeds[which] = move;
+		}
         *retvalP = xmlrpc_c::value_int(rval);
     }
 };
@@ -383,6 +388,10 @@ public:
         {
             rval = -2;
         }
+        if (rval == 0)
+        {
+			curspeeds[which] = 0.0;
+		}
         *retvalP = xmlrpc_c::value_int(rval);
     }
 };
@@ -542,6 +551,7 @@ public:
             sleep((BK_DELAY/1000));
             myNode.EnableReq(false);
             motor_state[which] = 0;
+            curspeeds[which] = 0.0;
         }
         else
         {
@@ -875,7 +885,7 @@ public:
         // signature and help strings are documentation -- the client
         // can query this information with a system.methodSignature and
         // system.methodHelp RPC.
-        this->_signature = "i:i";
+        this->_signature = "s:i";
             // method's result and two arguments are integer/float
         this->_help = "This allows an app to update the heartbeat time";
         this->Manager = myMgr;
@@ -884,12 +894,14 @@ public:
     execute(xmlrpc_c::paramList const& paramList,
             xmlrpc_c::value *   const  retvalP) {
         
+        char buf[256];
         int rval = 0;
         int logstr(paramList.getInt(0));
         paramList.verifyEnd(1);
         
         time(&heartbeat);
-        *retvalP = xmlrpc_c::value_int(0);
+        sprintf(buf, "%ld,%lf,%lf", (long)heartbeat, curspeeds[0], curspeeds[1]);
+        *retvalP = xmlrpc_c::value_string(buf);
     }
 };
 
