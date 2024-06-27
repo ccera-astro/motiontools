@@ -9,13 +9,27 @@ import time
 RPC = None
 RPC2 = None
 
+InitReset = False
+
 def init_RPC(srvr):
     global RPC
+    global InitReset
     if (RPC == None):
         try:
             RPC = xml.ServerProxy(srvr)
         except:
             RPC = None
+    if (RPC is not None and InitReset is False):
+        try:
+            RPC.AccLimit(0, 2200)
+            time.sleep(0.25)
+            RPC.VelLimit(0, 1600)
+            time.sleep(0.5)
+            RPC.AccLimit(1, 2200)
+            time.sleep(0.25)
+            RPC.VelLimit(1, 1600)
+        except:
+            pass
 
 def sysExit(v,srvr):
     global RPC
@@ -42,7 +56,7 @@ def axLimits(ax,srvr):
     global RPC
     init_RPC(srvr)
     try:
-        RPC.AccLimit(ax, 1000)
+        RPC.AccLimit(ax, 2200)
         time.sleep(0.25)
         RPC.VelLimit(ax, 1600)
         rv = True
