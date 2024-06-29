@@ -86,7 +86,7 @@ EQUANT = (1.0/16834.0)*360.0
 #
 def send_heartbeat():
     global rpc
-    return rpc.HearBeat(0)
+    return rpc.HeartBeat(0)
     
 def set_az_speed(spd):
     global rpc
