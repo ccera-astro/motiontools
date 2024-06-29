@@ -21,11 +21,11 @@ def init_RPC(srvr):
             RPC = None
     if (RPC is not None and InitReset is False):
         try:
-            RPC.AccLimit(0, 2200)
+            RPC.AccLimit(0, 2500)
             time.sleep(0.25)
             RPC.VelLimit(0, 1600)
             time.sleep(0.5)
-            RPC.AccLimit(1, 2200)
+            RPC.AccLimit(1, 2500)
             time.sleep(0.25)
             RPC.VelLimit(1, 1600)
         except:

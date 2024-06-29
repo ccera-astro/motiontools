@@ -476,8 +476,8 @@ blocks:
       \    global RPC\n    global InitReset\n    if (RPC == None):\n        try:\n\
       \            RPC = xml.ServerProxy(srvr)\n        except:\n            RPC =\
       \ None\n    if (RPC is not None and InitReset is False):\n        try:\n   \
-      \         RPC.AccLimit(0, 2200)\n            time.sleep(0.25)\n            RPC.VelLimit(0,\
-      \ 1600)\n            time.sleep(0.5)\n            RPC.AccLimit(1, 2200)\n  \
+      \         RPC.AccLimit(0, 2500)\n            time.sleep(0.25)\n            RPC.VelLimit(0,\
+      \ 1600)\n            time.sleep(0.5)\n            RPC.AccLimit(1, 2500)\n  \
       \          time.sleep(0.25)\n            RPC.VelLimit(1, 1600)\n        except:\n\
       \            pass\n\ndef sysExit(v,srvr):\n    global RPC\n    init_RPC(srvr)\n\
       \    \n    if (v == 1):\n        try:\n            RPC.SysExit(0)\n        except:\n\
