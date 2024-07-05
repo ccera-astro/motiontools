@@ -1,0 +1,22 @@
+#!/bin/bash
+if [ $# -ne 2 ]
+then
+	echo Usage: galactic_doppler datadir server
+	exit
+fi
+l=0
+incr=3
+limit=90
+receiver_xmlrpc="http://$2:14200"
+datadir=$1
+while [ $l -le $limit ]
+do
+    $HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
+       --parameter set_filename --value "/dev/null"
+	$HOME/motiontools/carp_motion.py --galactic --ra $l --dec 0.0 --serror 0.1
+	date=`date -u +%Y%m%d`
+	$HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
+	   --parameter set_filename --value $datadir/$date-$l-doppler.dat
+	sleep 180
+	l=`expr $l + $incr`
+done
