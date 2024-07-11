@@ -1,0 +1,20 @@
+#!/bin/bash
+if [ $# -ne 4 ]
+then
+	echo Usage: multi_transit datadir server ra dec
+	exit
+fi
+ra=$3
+dec=$4
+receiver_xmlrpc="http://$2:14200"
+datadir=$1
+for t in 1 2 3
+do
+    $HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
+       --parameter set_filename --value "/dev/null"
+	$HOME/motiontools/carp_motion.py --ra $ra --dec $dec --serror 0.075
+	date=`date -u +%Y%m%d`
+	$HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
+	   --parameter set_filename --value $datadir/$date-transit-$t-doppler.dat
+	sleep 1800
+done
