@@ -1,14 +1,16 @@
 #!/bin/bash
-if [ $# -ne 4 ]
+if [ $# -ne 5 ]
 then
-	echo Usage: multi_transit datadir server ra dec
+	echo Usage: multi_transit datadir server ra dec tcount
 	exit
 fi
-ra=$3
+ra=`python -c "print($3-0.25)"`
 dec=$4
 receiver_xmlrpc="http://$2:14200"
 datadir=$1
-for t in 1 2 3
+tcount=$5
+t=0
+while [ $t -lt $tcount ]
 do
     $HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
        --parameter set_filename --value "/dev/null"
@@ -17,4 +19,5 @@ do
 	$HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
 	   --parameter set_filename --value $datadir/$date-transit-$t-doppler.dat
 	sleep 1800
+	t=`expr $t + 1`
 done

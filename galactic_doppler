@@ -4,12 +4,12 @@ then
 	echo Usage: galactic_doppler datadir server
 	exit
 fi
-l=0
+l=90
 incr=3
-limit=90
+limit=0
 receiver_xmlrpc="http://$2:14200"
 datadir=$1
-while [ $l -le $limit ]
+while [ $l -ge $limit ]
 do
     $HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
        --parameter set_filename --value "/dev/null"
@@ -18,5 +18,5 @@ do
 	$HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
 	   --parameter set_filename --value $datadir/$date-$l-doppler.dat
 	sleep 180
-	l=`expr $l + $incr`
+	l=`expr $l - $incr`
 done
