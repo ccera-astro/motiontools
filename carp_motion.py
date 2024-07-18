@@ -63,7 +63,7 @@ DEG_MINUTE = 0.25
 # Soft limits for motion
 #
 ELEVATION_LIMITS = (0.5,89.5)
-AZIMUTH_LIMITS = (0.0,357.25)
+AZIMUTH_LIMITS = (0.2,359.8)
 
 #
 # Gear spin max
