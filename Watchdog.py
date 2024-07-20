@@ -11,7 +11,7 @@ def dissect(s):
 parser = argparse.ArgumentParser()
 parser.add_argument("--proxy", type=str, default="http://localhost:36036", help="XMLRPC Server")
 parser.add_argument("--sensorproxy", type=str, default="http://localhost:9090", help="XMLRPC Sensor Server")
-parser.add_argument("--timeout", type=int, default=90, help="Watchdog timeout (seconds)")
+parser.add_argument("--timeout", type=int, default=120, help="Watchdog timeout (seconds)")
 parser.add_argument("--relay", type=str, default="192.168.1.4", help="relay server address")
 
 args = parser.parse_args()
@@ -78,7 +78,7 @@ while True:
                 commanded_standby = False
         sleeptime = 10
     except Exception as e:
-        print ("No comms with server...sleeping")
+        #print ("No comms with server...sleeping")
         #print (e)
         time.sleep (sleeptime)
         if (sleeptime < 60):
