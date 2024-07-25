@@ -17,5 +17,5 @@ do
 	date=`date -u +%Y%m%d`
 	$HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
 	   --parameter set_filename --value $datadir/$date-$l-thickness.dat
-	sleep 180
+	sleep 240
 done
