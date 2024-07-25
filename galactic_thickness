@@ -1,0 +1,21 @@
+#!/bin/bash
+if [ $# -ne 2 ]
+then
+	echo Usage: galactic_thickness datadir server
+	exit
+fi
+l=180
+incr=5
+limit=0
+receiver_xmlrpc="http://$2:14200"
+datadir=$1
+for b in -15 -10 -5 0 5 10 15
+do
+    $HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
+       --parameter set_filename --value "/dev/null"
+	$HOME/motiontools/carp_motion.py --galactic --ra $l --dec $b --serror 0.1
+	date=`date -u +%Y%m%d`
+	$HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
+	   --parameter set_filename --value $datadir/$date-$l-thickness.dat
+	sleep 180
+done
