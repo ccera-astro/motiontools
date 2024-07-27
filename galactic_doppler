@@ -20,3 +20,5 @@ do
 	sleep 180
 	l=`expr $l - $incr`
 done
+$HOME/motiontools/xmlrpc_send.py --xmlrpc $receiver_xmlrpc \
+	--parameter set_filename --value "/dev/null"
